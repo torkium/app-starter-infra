@@ -63,6 +63,23 @@ make init
 make stack-up
 ```
 
+Project bootstrap from the full trio:
+
+```bash
+./scripts/bootstrap-project.sh \
+  --project-name my-app \
+  --github-owner my-org \
+  --back-repo my-app-back \
+  --front-repo my-app-front \
+  --infra-repo my-app-infra
+```
+
+This orchestrator:
+- applies the known project-safe renames in the three repos
+- generates the ignored local files if missing
+- checks local prerequisites before bootstrapping
+- optionally rewires Git remotes with `--configure-git-remotes`
+
 Useful commands:
 
 ```bash
@@ -134,7 +151,7 @@ This repo provides bootstrap helpers for GitHub Environment variables and secret
 
 ```bash
 cp bootstrap/github/environment.env.example bootstrap/github/dev.env
-./scripts/bootstrap-github-environment.sh --envs=dev --env-file=bootstrap/github/dev.env --repo=owner/starter_infra --mask
+./scripts/bootstrap-github-environment.sh --envs=dev --env-file=bootstrap/github/dev.env --repo=my-org/my-app-infra --mask
 ```
 
 See:

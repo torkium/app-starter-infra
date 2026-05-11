@@ -13,6 +13,11 @@ if [ -n "${GRAFANA_HTPASSWD:-}" ]; then
   exit 0
 fi
 
+if [ "${FORCE_GRAFANA_HTPASSWD_REGENERATION:-0}" != "1" ] && [ -f "$OUTPUT_FILE" ] && [ -z "${GRAFANA_BASIC_AUTH_PASSWORD:-}" ]; then
+  echo "Keep existing Grafana htpasswd at $OUTPUT_FILE"
+  exit 0
+fi
+
 : "${GRAFANA_BASIC_AUTH_USER:=starter}"
 
 if [ -z "${GRAFANA_BASIC_AUTH_PASSWORD:-}" ]; then

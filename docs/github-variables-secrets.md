@@ -94,7 +94,7 @@ Ce starter utilise les GitHub Environments pour isoler la configuration de
 
 ## Bootstrap
 
-1. Copier [bootstrap/github/environment.env.example](/home/akoki/projects/starter_infra/bootstrap/github/environment.env.example) vers un fichier local non versionne.
+1. Copier [bootstrap/github/environment.env.example](../bootstrap/github/environment.env.example) vers un fichier local non versionne.
 2. Adapter les valeurs de l'environnement cible.
 3. Authentifier `gh`.
 4. Lancer le bootstrap.
@@ -106,7 +106,7 @@ cp bootstrap/github/environment.env.example bootstrap/github/dev.env
 ./scripts/bootstrap-github-environment.sh \
   --envs=dev \
   --env-file=bootstrap/github/dev.env \
-  --repo=owner/starter_infra \
+  --repo=my-org/my-app-infra \
   --mask
 ```
 
@@ -115,7 +115,7 @@ cp bootstrap/github/environment.env.example bootstrap/github/dev.env
   --apply \
   --envs=prod \
   --env-file=bootstrap/github/prod.env \
-  --repo=owner/starter_infra
+  --repo=my-org/my-app-infra
 ```
 
 ## Notes
@@ -135,7 +135,7 @@ Si vous voulez declencher le deploy infra automatiquement depuis les repos
 backend ou frontend, prevoyez aussi des secrets dans ces repos applicatifs :
 
 - `INFRA_REPOSITORY`
-  Exemple : `owner/starter_infra`
+  Exemple : `my-org/my-app-infra`
 - `INFRA_REPOSITORY_DISPATCH_TOKEN`
   Token GitHub ou GitHub App token avec droits suffisants pour appeler `repository_dispatch` sur le repo infra
 

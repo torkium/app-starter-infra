@@ -39,7 +39,7 @@ Files prepared:
 
 Next steps:
 1. Review .env and env/.env.dev
-2. If not already done, run make init in ../starter_back and ../starter_front
+2. If not already done, run make init in your sibling backend and frontend repositories
 3. Read docs/quick-start.md for Stripe, B2 and GitHub Environment setup
 4. Run: make up
 5. Validate: make health

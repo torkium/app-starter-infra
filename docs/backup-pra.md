@@ -19,9 +19,9 @@ temps que la base.
 
 ## Scripts fournis
 
-- [scripts/backup.sh](/home/akoki/projects/starter_infra/scripts/backup.sh)
-- [scripts/backup-offsite.sh](/home/akoki/projects/starter_infra/scripts/backup-offsite.sh)
-- [scripts/restore.sh](/home/akoki/projects/starter_infra/scripts/restore.sh)
+- [scripts/backup.sh](../scripts/backup.sh)
+- [scripts/backup-offsite.sh](../scripts/backup-offsite.sh)
+- [scripts/restore.sh](../scripts/restore.sh)
 
 Ces scripts sauvegardent la base MySQL et, si present, l'archive media locale
 associee. Les fichiers runtime et les secrets doivent etre geres dans un coffre

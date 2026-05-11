@@ -1,8 +1,35 @@
 # Quick Start complet
 
+## 0. Bootstrap recommande
+
+Depuis `starter_infra`, le chemin le plus fiable est l'orchestrateur :
+
+```bash
+./scripts/bootstrap-project.sh \
+  --project-name my-app \
+  --github-owner my-org \
+  --back-repo my-app-back \
+  --front-repo my-app-front \
+  --infra-repo my-app-infra
+```
+
+Le script :
+- applique les remplacements connus dans les trois repos
+- genere les fichiers locaux ignores s'ils sont absents
+- verifie les prerequis utiles au bootstrap
+- laisse uniquement les actions GitHub reelles a faire a la main
+
+Par defaut, l'orchestrateur sait partir d'un trio clone avec les noms de dossiers
+locaux `starter_back`, `starter_front`, `starter_infra`.
+
 Ce guide sert de fil directeur pour repartir du trio `starter_back`,
 `starter_front`, `starter_infra` et obtenir un projet utilisable sans chasse aux
 variables.
+
+Convention de lecture du guide :
+
+- avant bootstrap ou renommage local, les chemins ci-dessous sont `starter_*`
+- apres bootstrap et renommage local des dossiers, remplacez-les par vos noms de repos reels
 
 ## 1. Choisir le mode d'usage
 
@@ -133,7 +160,7 @@ Bootstrap recommande :
 ```bash
 cd starter_infra
 cp bootstrap/github/environment.env.example bootstrap/github/dev.env
-./scripts/bootstrap-github-environment.sh --envs=dev --env-file=bootstrap/github/dev.env --repo=owner/starter_infra --mask
+./scripts/bootstrap-github-environment.sh --envs=dev --env-file=bootstrap/github/dev.env --repo=my-org/my-app-infra --mask
 ```
 
 Pour les repos applicatifs, ajouter aussi :

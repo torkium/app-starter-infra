@@ -5,8 +5,8 @@ bucket Backblaze B2 prive via des URLs signees HS256.
 
 Fichiers :
 
-- [edge-media-worker/worker.js](/home/akoki/projects/starter_infra/edge-media-worker/worker.js)
-- [edge-media-worker/wrangler.toml.example](/home/akoki/projects/starter_infra/edge-media-worker/wrangler.toml.example)
+- [edge-media-worker/worker.js](../edge-media-worker/worker.js)
+- [edge-media-worker/wrangler.toml.example](../edge-media-worker/wrangler.toml.example)
 
 ## Capacites fournies
 
