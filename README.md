@@ -25,7 +25,7 @@ The repo is intentionally generic and contains no project-specific hostnames, se
 
 ## What Is Included
 
-- Docker Compose stack for backend, frontend, MySQL, Redis, Mercure, Nginx, workers, and scheduler
+- Docker Compose stack for backend, frontend, MySQL, Redis, Mercure, Mailpit, Nginx, workers, and scheduler
 - local development override using sibling repos `../starter_back` and `../starter_front`
 - optional observability stack with Grafana, Prometheus, Loki, Alloy, and cAdvisor
 - runtime environment templates
@@ -100,6 +100,8 @@ make stack-assert
 Default local entrypoints:
 - App: `https://app.localhost`
 - Mercure: `https://app.localhost/.well-known/mercure`
+- Mailpit UI: `http://localhost:8025`
+- Mailpit SMTP: `localhost:1025`
 - Grafana: `https://app.localhost/grafana/` when observability is enabled
 
 ## Default Runtime Versions
@@ -188,6 +190,7 @@ If you use the full trio:
 2. Initialize `starter_front`
 3. Initialize `starter_infra`
 4. Start the integrated stack from `starter_infra`
-5. Validate the stack with `make stack-assert`
+5. Run migrations from `starter_infra`
+6. Validate the stack with `make stack-assert`
 
 `starter_infra` is the repo that ties the other two together for local full-stack work and deployment automation.

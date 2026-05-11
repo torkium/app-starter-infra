@@ -106,6 +106,11 @@ Variables/secrets les plus structurants :
 - `B2_ENDPOINT`, `B2_BUCKET`, `B2_PREFIX`
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
 
+En mode dev pack complet, le comportement par defaut est :
+
+- `MAILER_DSN=smtp://mailpit:1025`
+- interface Mailpit sur `http://localhost:8025`
+
 ## 6. Stripe
 
 Creer les cles dans le dashboard Stripe :
@@ -170,28 +175,20 @@ Pour les repos applicatifs, ajouter aussi :
 
 ## 9. Premier demarrage local
 
-Backend :
-
-```bash
-cd starter_back
-make up
-make migrate
-```
-
-Frontend :
-
-```bash
-cd starter_front
-make up
-```
-
-Infra complete :
+Infra complete recommande :
 
 ```bash
 cd starter_infra
 make stack-up
+make migrate
 make stack-assert
 ```
+
+Ce mode devient la reference pour le dev pack complet :
+
+- front + back + workers + scheduler + proxy TLS
+- Mercure
+- Mailpit sur `http://localhost:8025`
 
 ## 10. Verification finale minimale
 

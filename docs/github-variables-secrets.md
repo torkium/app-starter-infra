@@ -19,6 +19,7 @@ Ce starter utilise les GitHub Environments pour isoler la configuration de
 - `REDIS_VERSION`
 - `NGINX_VERSION`
 - `MERCURE_VERSION`
+- `MAILPIT_VERSION`
 - `GRAFANA_VERSION`
 - `PROMETHEUS_VERSION`
 - `LOKI_VERSION`
@@ -28,6 +29,8 @@ Ce starter utilise les GitHub Environments pour isoler la configuration de
 - `MYSQL_USER`
 - `HOST_HTTP_PORT`
 - `HOST_HTTPS_PORT`
+- `MAILPIT_SMTP_PORT`
+- `MAILPIT_HTTP_PORT`
 - `TLS_CERT_PATH`
 - `TLS_KEY_PATH`
 - `BACK_HTTP_PORT`
@@ -121,6 +124,7 @@ cp bootstrap/github/environment.env.example bootstrap/github/dev.env
 ## Notes
 
 - `ENABLE_OBSERVABILITY=1` renseigne automatiquement `COMPOSE_PROFILES=observability` au moment du rendu de `.env`.
+- pour les environnements non-prod, `MAILER_DSN=smtp://mailpit:1025` est un choix raisonnable si vous gardez Mailpit dans le stack infra.
 - `GRAFANA_HTPASSWD` est optionnel tant que `GRAFANA_AUTH_BASIC_REALM=off`.
 - `ENABLE_MEDIA_EDGE=1` n'active pas un container. Cette variable documente que l'application consomme un worker edge externe.
 - `BACK_SOURCE_REPOSITORY` et `FRONT_SOURCE_REPOSITORY` permettent a la gate CI du repo infra de savoir quels repos checkout pour lancer l'integration complete.
