@@ -67,6 +67,10 @@ jobs:
           cp .env.example .env
           cp env/.env.dev.example env/.env.dev
           chmod +x scripts/*.sh
+          mkdir -p sources/starter_back/config/jwt
+          openssl genrsa -out sources/starter_back/config/jwt/private.pem 4096
+          openssl rsa -pubout -in sources/starter_back/config/jwt/private.pem -out sources/starter_back/config/jwt/public.pem
+          chmod 600 sources/starter_back/config/jwt/private.pem
           APP_DOMAIN=app.localhost \
           COMPOSE_PROJECT_NAME=starterci \
           HOST_HTTP_PORT=8088 \
