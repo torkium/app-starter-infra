@@ -60,10 +60,28 @@ wait_for_http() {
   exit 1
 }
 
+wait_for_mercure() {
+  local url="$1"
+  local attempts="${2:-20}"
+  local sleep_seconds="${3:-5}"
+  local status
+
+  for _ in $(seq 1 "$attempts"); do
+    status="$(curl -ksS -o /dev/null -w '%{http_code}' "$url" || true)"
+    if [ "$status" = "200" ] || [ "$status" = "400" ]; then
+      return 0
+    fi
+    sleep "$sleep_seconds"
+  done
+
+  echo "HTTP check failed for mercure endpoint: $url" >&2
+  exit 1
+}
+
 wait_for_http "$BACK_HEALTH_URL" "backend health"
 wait_for_http "$FRONT_HEALTH_URL" "frontend root"
 wait_for_http "$API_DOC_URL" "api doc"
-wait_for_http "$MERCURE_HEALTH_URL" "mercure endpoint"
+wait_for_mercure "$MERCURE_HEALTH_URL"
 
 assert_running_service db
 assert_running_service redis
