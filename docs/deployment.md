@@ -144,7 +144,7 @@ les deux champs de version :
     "app": "back",
     "image": "ghcr.io/example/starter-back",
     "version": "sha-abc123",
-    "repository": "owner/starter_back"
+    "repository": "owner/app-starter-back"
   }
 }
 ```
@@ -171,7 +171,7 @@ curl -L \
       "environment": "staging",
       "app": "back",
       "version": "sha-abc123",
-      "repository": "owner/starter_back"
+      "repository": "owner/app-starter-back"
     }
   }'
 ```

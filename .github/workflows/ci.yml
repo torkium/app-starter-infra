@@ -51,14 +51,14 @@ jobs:
       - name: Checkout backend sources
         uses: actions/checkout@v6
         with:
-          repository: ${{ vars.BACK_SOURCE_REPOSITORY || format('{0}/starter_back', github.repository_owner) }}
+          repository: ${{ vars.BACK_SOURCE_REPOSITORY || format('{0}/app-starter-back', github.repository_owner) }}
           path: sources/starter_back
           token: ${{ secrets.CI_READ_REPOSITORIES_TOKEN || github.token }}
 
       - name: Checkout frontend sources
         uses: actions/checkout@v6
         with:
-          repository: ${{ vars.FRONT_SOURCE_REPOSITORY || format('{0}/starter_front', github.repository_owner) }}
+          repository: ${{ vars.FRONT_SOURCE_REPOSITORY || format('{0}/app-starter-front', github.repository_owner) }}
           path: sources/starter_front
           token: ${{ secrets.CI_READ_REPOSITORIES_TOKEN || github.token }}
 
