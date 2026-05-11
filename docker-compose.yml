@@ -1,0 +1,282 @@
+name: ${COMPOSE_PROJECT_NAME:-starter}
+
+services:
+  db:
+    image: mysql:${MYSQL_VERSION:-8.4.9}
+    restart: unless-stopped
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-app}
+      MYSQL_USER: ${MYSQL_USER:-app}
+    command:
+      - --sql-mode=
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - starter
+
+  redis:
+    image: redis:${REDIS_VERSION:-8.6.3-alpine}
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - starter
+
+  mercure:
+    image: dunglas/mercure:${MERCURE_VERSION:-v0.23.5}
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET:-change-me}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET:-change-me}
+      MERCURE_CORS_ALLOWED_ORIGINS: ${MERCURE_CORS_ALLOWED_ORIGINS:-https://${APP_DOMAIN:-app.localhost}}
+      MERCURE_PUBLISH_ALLOWED_ORIGINS: ${MERCURE_PUBLISH_ALLOWED_ORIGINS:-https://${APP_DOMAIN:-app.localhost}}
+      MERCURE_EXTRA_DIRECTIVES: |
+        anonymous
+        subscriptions
+    command: /usr/bin/caddy run --config /etc/caddy/Caddyfile
+    networks:
+      - starter
+
+  back:
+    image: ${BACK_IMAGE}:${BACK_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mercure:
+        condition: service_started
+    expose:
+      - "${BACK_HTTP_PORT:-8080}"
+    volumes:
+      - media_uploads:/app/public/uploads/media
+    networks:
+      - starter
+
+  worker_default:
+    image: ${BACK_IMAGE}:${BACK_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    command: ${WORKER_DEFAULT_COMMAND:-php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M}
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - starter
+
+  worker_mail:
+    image: ${BACK_IMAGE}:${BACK_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    command: ${WORKER_MAIL_COMMAND:-php bin/console messenger:consume async_mail --time-limit=3600 --memory-limit=256M}
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - starter
+
+  worker_outbox:
+    image: ${BACK_IMAGE}:${BACK_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    command: ${WORKER_OUTBOX_COMMAND:-php bin/console messenger:consume async_outbox --time-limit=3600 --memory-limit=256M}
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - starter
+
+  scheduler:
+    image: ${BACK_IMAGE}:${BACK_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    command: ${SCHEDULER_COMMAND:-/usr/local/bin/scheduler-loop.sh}
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    environment:
+      SCHEDULER_TICK_COMMAND: ${SCHEDULER_TICK_COMMAND:-php bin/console app:schedule:run}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./scripts/scheduler-loop.sh:/usr/local/bin/scheduler-loop.sh:ro
+    networks:
+      - starter
+
+  front:
+    image: ${FRONT_IMAGE}:${FRONT_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    depends_on:
+      back:
+        condition: service_started
+      mercure:
+        condition: service_started
+    expose:
+      - "${FRONT_HTTP_PORT:-3000}"
+    networks:
+      - starter
+
+  nginx:
+    image: nginx:${NGINX_VERSION:-1.30.0-alpine}
+    restart: unless-stopped
+    depends_on:
+      back:
+        condition: service_started
+      front:
+        condition: service_started
+      mercure:
+        condition: service_started
+    ports:
+      - "${HOST_HTTP_PORT:-80}:80"
+      - "${HOST_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/infra_nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./env/grafana.htpasswd:/etc/nginx/grafana.htpasswd:ro
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-app.localhost}
+      TLS_CERT_PATH: ${TLS_CERT_PATH:-/etc/nginx/certs/dev/fullchain.pem}
+      TLS_KEY_PATH: ${TLS_KEY_PATH:-/etc/nginx/certs/dev/privkey.pem}
+      BACK_UPSTREAM: back:${BACK_HTTP_PORT:-8080}
+      FRONT_UPSTREAM: front:${FRONT_HTTP_PORT:-3000}
+      MERCURE_UPSTREAM: mercure:80
+      GRAFANA_UPSTREAM: grafana:3000
+      GRAFANA_AUTH_BASIC_REALM: ${GRAFANA_AUTH_BASIC_REALM:-off}
+    networks:
+      - starter
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-13.0.1}
+    restart: unless-stopped
+    profiles:
+      - observability
+    env_file:
+      - ./env/.env.${DEPLOY_ENV:-dev}
+    environment:
+      GF_SERVER_ROOT_URL: https://${APP_DOMAIN:-app.localhost}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-observe}
+      GF_SECURITY_SECRET_KEY: ${GRAFANA_SECRET_KEY:-change-me-observe}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - starter
+
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION:-v3.11.3}
+    restart: unless-stopped
+    profiles:
+      - observability
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-7d}
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    networks:
+      - starter
+
+  loki:
+    image: grafana/loki:${LOKI_VERSION:-3.7.1}
+    restart: unless-stopped
+    profiles:
+      - observability
+    environment:
+      LOKI_RETENTION: ${LOKI_RETENTION:-168h}
+    command:
+      - -config.file=/etc/loki/config.yml
+      - -config.expand-env=true
+    volumes:
+      - ./monitoring/loki/config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    networks:
+      - starter
+
+  alloy:
+    image: grafana/alloy:${ALLOY_VERSION:-v1.16.1}
+    restart: unless-stopped
+    profiles:
+      - observability
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+    depends_on:
+      loki:
+        condition: service_started
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - starter
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:${CADVISOR_VERSION:-v0.55.1}
+    restart: unless-stopped
+    profiles:
+      - observability
+    privileged: true
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=30s
+      - --store_container_labels=false
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - starter
+
+volumes:
+  db_data:
+  redis_data:
+  media_uploads:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+  alloy_data:
+
+networks:
+  starter:
+    driver: bridge

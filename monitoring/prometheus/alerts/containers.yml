@@ -1,0 +1,29 @@
+groups:
+  - name: starter-observability
+    rules:
+      - alert: ObservabilityComponentDown
+        expr: up{job=~"prometheus|alloy|cadvisor"} == 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Brique d'observabilite indisponible"
+          description: "La cible {{ $labels.job }} ne repond plus."
+
+      - alert: ContainerHighMemory
+        expr: (container_memory_working_set_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} > 0.9) and container_spec_memory_limit_bytes{name!=""} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consommation memoire elevee"
+          description: "Le container {{ $labels.name }} depasse 90% de sa limite memoire."
+
+      - alert: ContainerRestartSpike
+        expr: increase(container_start_time_seconds{name!=""}[15m]) > 1
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redemarrages containers detectes"
+          description: "Le container {{ $labels.name }} a redemarre plusieurs fois sur les 15 dernieres minutes."

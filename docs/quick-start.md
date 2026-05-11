@@ -1,0 +1,192 @@
+# Quick Start complet
+
+Ce guide sert de fil directeur pour repartir du trio `starter_back`,
+`starter_front`, `starter_infra` et obtenir un projet utilisable sans chasse aux
+variables.
+
+## 1. Choisir le mode d'usage
+
+Tu peux utiliser les starters de deux manieres :
+
+- `starter_back` seul, avec ton propre front et ta propre infra
+- `starter_front` seul, avec ton propre backend compatible
+- les trois repos ensemble, avec `starter_infra` comme orchestrateur global
+
+Le reste de ce guide couvre le mode complet a trois repos.
+
+## 2. Preparer les trois repos
+
+Dans chaque repo :
+
+```bash
+make init
+```
+
+Ordre recommande :
+
+1. `starter_back`
+2. `starter_front`
+3. `starter_infra`
+
+## 3. Configurer le backend
+
+Fichier principal : `starter_back/.env`
+
+Variables a verifier en premier :
+
+- `APP_FRONT_BASE_URL`
+- `MAILER_DSN`
+- `MAILER_FROM`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+Pour les cles JWT :
+
+- `make init` cree deja `config/jwt/private.pem` et `config/jwt/public.pem`
+- pour la prod, remplacez-les par des cles durables generees hors machine de dev
+
+## 4. Configurer le frontend
+
+Fichier principal : `starter_front/.env`
+
+Variables a verifier :
+
+- `API_BASE_URL`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_MERCURE_URL`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_MEDIA_BASE_URL`
+- `NEXT_PUBLIC_MEDIA_UPLOAD_BASE_URL`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+
+## 5. Configurer l'infra
+
+Fichiers principaux :
+
+- `starter_infra/.env`
+- `starter_infra/env/.env.dev`
+- `starter_infra/bootstrap/github/dev.env` ou equivalent
+
+Variables/secrets les plus structurants :
+
+- `APP_DOMAIN`
+- `BACK_IMAGE`, `FRONT_IMAGE`
+- `APP_SECRET`
+- `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`
+- `MERCURE_JWT_SECRET`
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- `MEDIA_EDGE_BASE_URL`
+- `B2_ENDPOINT`, `B2_BUCKET`, `B2_PREFIX`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+
+## 6. Stripe
+
+Creer les cles dans le dashboard Stripe :
+
+1. Developers -> API keys
+2. recuperer `Publishable key` et `Secret key`
+3. Developers -> Webhooks
+4. creer un endpoint de webhook vers `https://<app-domain>/api/stripe/webhook`
+5. recuperer le `Signing secret`
+
+Ou les mettre :
+
+- `starter_back/.env`
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+- `starter_front/.env`
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `starter_infra/env/.env.<env>`
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+
+## 7. Backblaze B2 / media edge
+
+Si vous servez des medias prives :
+
+1. creer un bucket prive B2
+2. creer une application key B2 avec acces limite au bucket
+3. deployer le worker Cloudflare fourni dans `edge-media-worker/`
+4. reporter l'URL publiee dans `MEDIA_EDGE_BASE_URL`
+
+Ou mettre les valeurs :
+
+- `starter_infra/env/.env.<env>`
+  - `B2_ENDPOINT`
+  - `B2_BUCKET`
+  - `B2_PREFIX`
+  - `MEDIA_EDGE_BASE_URL`
+- `starter_infra/bootstrap/github/*.env`
+  - memes cles cote GitHub Environment
+
+Voir aussi [cloudflare-worker.md](./cloudflare-worker.md).
+
+## 8. GitHub variables et secrets
+
+Le point d'entree est :
+
+- [github-variables-secrets.md](./github-variables-secrets.md)
+
+Bootstrap recommande :
+
+```bash
+cd starter_infra
+cp bootstrap/github/environment.env.example bootstrap/github/dev.env
+./scripts/bootstrap-github-environment.sh --envs=dev --env-file=bootstrap/github/dev.env --repo=owner/starter_infra --mask
+```
+
+Pour les repos applicatifs, ajouter aussi :
+
+- `INFRA_REPOSITORY`
+- `INFRA_REPOSITORY_DISPATCH_TOKEN`
+
+## 9. Premier demarrage local
+
+Backend :
+
+```bash
+cd starter_back
+make up
+make migrate
+```
+
+Frontend :
+
+```bash
+cd starter_front
+make up
+```
+
+Infra complete :
+
+```bash
+cd starter_infra
+make stack-up
+make stack-assert
+```
+
+## 10. Verification finale minimale
+
+Backend :
+
+```bash
+cd starter_back
+make test
+```
+
+Frontend :
+
+```bash
+cd starter_front
+make check
+```
+
+Infra :
+
+```bash
+cd starter_infra
+make config
+make health
+make stack-assert
+```

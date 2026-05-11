@@ -1,0 +1,12 @@
+.env
+.env.local
+env/.env.dev
+env/.env.staging
+env/.env.prod
+env/grafana.htpasswd
+bootstrap/github/*.env
+certs/dev/*
+!certs/dev/.gitignore
+backups/*
+!backups/.gitignore
+*.log

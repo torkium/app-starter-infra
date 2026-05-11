@@ -1,0 +1,20 @@
+name = "starter-media-edge"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGINS = "https://app.example.test"
+B2_ENDPOINT = "https://s3.eu-central-003.backblazeb2.com"
+B2_BUCKET = "starter-private-media"
+B2_PREFIX = "media"
+MAX_TTL = "300"
+DEFAULT_CACHE_MAX_AGE = "300"
+DEFAULT_CACHE_STALE_WHILE_REVALIDATE = "60"
+LONG_CACHE_MAX_AGE = "604800"
+LONG_CACHE_STALE_WHILE_REVALIDATE = "600"
+
+[[kv_namespaces]]
+binding = "USED_JTIS"
+id = "replace-me"

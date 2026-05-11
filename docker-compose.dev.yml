@@ -1,0 +1,46 @@
+services:
+  back:
+    build:
+      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+    volumes:
+      - media_uploads:/app/public/uploads/media
+      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+
+  worker_default:
+    build:
+      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+    volumes:
+      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+
+  worker_mail:
+    build:
+      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+    volumes:
+      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+
+  worker_outbox:
+    build:
+      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+    volumes:
+      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+
+  scheduler:
+    build:
+      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+    volumes:
+      - ./scripts/scheduler-loop.sh:/usr/local/bin/scheduler-loop.sh:ro
+      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+
+  front:
+    build:
+      context: ${FRONT_BUILD_CONTEXT:-../starter_front}
+      dockerfile: ${FRONT_DOCKERFILE:-Dockerfile}
+
+  nginx:
+    volumes:
+      - ./env/grafana.htpasswd:/etc/nginx/grafana.htpasswd:ro

@@ -1,0 +1,372 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      back_version:
+        description: Backend image tag
+        required: true
+        default: latest
+      front_version:
+        description: Frontend image tag
+        required: true
+        default: latest
+      skip_migrations:
+        description: Skip database migrations
+        required: true
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
+  repository_dispatch:
+    types:
+      - deploy
+
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.event.client_payload.environment || 'unknown' }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+      back_image: ${{ steps.resolve.outputs.back_image }}
+      back_version: ${{ steps.resolve.outputs.back_version }}
+      front_image: ${{ steps.resolve.outputs.front_image }}
+      front_version: ${{ steps.resolve.outputs.front_version }}
+      skip_migrations: ${{ steps.resolve.outputs.skip_migrations }}
+      trigger_source: ${{ steps.resolve.outputs.trigger_source }}
+    steps:
+      - name: Resolve deployment inputs
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_BACK_VERSION: ${{ inputs.back_version }}
+          INPUT_FRONT_VERSION: ${{ inputs.front_version }}
+          INPUT_SKIP_MIGRATIONS: ${{ inputs.skip_migrations }}
+          PAYLOAD_ENVIRONMENT: ${{ github.event.client_payload.environment || '' }}
+          PAYLOAD_BACK_IMAGE: ${{ github.event.client_payload.back_image || '' }}
+          PAYLOAD_BACK_VERSION: ${{ github.event.client_payload.back_version || '' }}
+          PAYLOAD_FRONT_IMAGE: ${{ github.event.client_payload.front_image || '' }}
+          PAYLOAD_FRONT_VERSION: ${{ github.event.client_payload.front_version || '' }}
+          PAYLOAD_SKIP_MIGRATIONS: ${{ github.event.client_payload.skip_migrations || '' }}
+          PAYLOAD_APP: ${{ github.event.client_payload.app || '' }}
+          PAYLOAD_IMAGE: ${{ github.event.client_payload.image || '' }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version || '' }}
+          PAYLOAD_REPOSITORY: ${{ github.event.client_payload.repository || github.event.client_payload.source_repository || github.event.client_payload.trigger_repository || '' }}
+        run: |
+          set -euo pipefail
+
+          environment="${INPUT_ENVIRONMENT:-}"
+          back_image="${PAYLOAD_BACK_IMAGE:-}"
+          back_version="${INPUT_BACK_VERSION:-latest}"
+          front_image="${PAYLOAD_FRONT_IMAGE:-}"
+          front_version="${INPUT_FRONT_VERSION:-latest}"
+          skip_migrations="${INPUT_SKIP_MIGRATIONS:-false}"
+          trigger_source="workflow_dispatch"
+
+          if [ "${EVENT_NAME}" = "repository_dispatch" ]; then
+            environment="${PAYLOAD_ENVIRONMENT:-}"
+            back_version="${PAYLOAD_BACK_VERSION:-}"
+            front_version="${PAYLOAD_FRONT_VERSION:-}"
+            skip_migrations="${PAYLOAD_SKIP_MIGRATIONS:-false}"
+            trigger_source="${PAYLOAD_REPOSITORY:-repository_dispatch}"
+
+            case "${PAYLOAD_APP:-}" in
+              back)
+                [ -n "${PAYLOAD_IMAGE:-}" ] && back_image="${PAYLOAD_IMAGE}"
+                [ -n "${PAYLOAD_VERSION:-}" ] && back_version="${PAYLOAD_VERSION}"
+                front_version="__KEEP_CURRENT__"
+                ;;
+              front)
+                [ -n "${PAYLOAD_IMAGE:-}" ] && front_image="${PAYLOAD_IMAGE}"
+                [ -n "${PAYLOAD_VERSION:-}" ] && front_version="${PAYLOAD_VERSION}"
+                back_version="__KEEP_CURRENT__"
+                ;;
+            esac
+
+            [ -n "${back_version}" ] || back_version="latest"
+            [ -n "${front_version}" ] || front_version="latest"
+          fi
+
+          case "${environment}" in
+            dev|staging|prod) ;;
+            *)
+              echo "Unsupported or missing environment: '${environment}'" >&2
+              exit 1
+              ;;
+          esac
+
+          case "${skip_migrations}" in
+            true|false) ;;
+            *)
+              echo "skip_migrations must be 'true' or 'false', got '${skip_migrations}'" >&2
+              exit 1
+              ;;
+          esac
+
+          {
+            echo "environment=${environment}"
+            echo "back_image=${back_image}"
+            echo "back_version=${back_version}"
+            echo "front_image=${front_image}"
+            echo "front_version=${front_version}"
+            echo "skip_migrations=${skip_migrations}"
+            echo "trigger_source=${trigger_source}"
+          } >> "${GITHUB_OUTPUT}"
+
+  deploy:
+    needs: prepare
+    runs-on: [self-hosted, linux, x64]
+    environment: ${{ needs.prepare.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Mark scripts executable
+        run: |
+          chmod +x scripts/*.sh
+
+      - name: Verify optional runner hostname
+        run: |
+          set -euo pipefail
+          if [ -n "${{ vars.EXPECTED_HOSTNAME || '' }}" ]; then
+            host="$(hostname -s || hostname)"
+            if [ "$host" != "${{ vars.EXPECTED_HOSTNAME }}" ]; then
+              echo "Refusing to deploy on unexpected host: $host" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Validate required env for compose
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          BACK_IMAGE: ${{ needs.prepare.outputs.back_image || vars.BACK_IMAGE }}
+          FRONT_IMAGE: ${{ needs.prepare.outputs.front_image || vars.FRONT_IMAGE }}
+        run: |
+          ./scripts/validate-required-env.sh compose
+
+      - name: Write compose env
+        env:
+          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME || 'starter' }}
+          DEPLOY_ENV: ${{ needs.prepare.outputs.environment }}
+          BACK_IMAGE: ${{ needs.prepare.outputs.back_image || vars.BACK_IMAGE }}
+          BACK_IMAGE_TAG: ${{ needs.prepare.outputs.back_version }}
+          FRONT_IMAGE: ${{ needs.prepare.outputs.front_image || vars.FRONT_IMAGE }}
+          FRONT_IMAGE_TAG: ${{ needs.prepare.outputs.front_version }}
+          MYSQL_VERSION: ${{ vars.MYSQL_VERSION || '8.4.9' }}
+          REDIS_VERSION: ${{ vars.REDIS_VERSION || '8.6.3-alpine' }}
+          NGINX_VERSION: ${{ vars.NGINX_VERSION || '1.30.0-alpine' }}
+          MERCURE_VERSION: ${{ vars.MERCURE_VERSION || 'v0.23.5' }}
+          GRAFANA_VERSION: ${{ vars.GRAFANA_VERSION || '13.0.1' }}
+          PROMETHEUS_VERSION: ${{ vars.PROMETHEUS_VERSION || 'v3.11.3' }}
+          LOKI_VERSION: ${{ vars.LOKI_VERSION || '3.7.1' }}
+          ALLOY_VERSION: ${{ vars.ALLOY_VERSION || 'v1.16.1' }}
+          CADVISOR_VERSION: ${{ vars.CADVISOR_VERSION || 'v0.55.1' }}
+          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'app' }}
+          MYSQL_USER: ${{ vars.MYSQL_USER || 'app' }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          HOST_HTTP_PORT: ${{ vars.HOST_HTTP_PORT || '80' }}
+          HOST_HTTPS_PORT: ${{ vars.HOST_HTTPS_PORT || '443' }}
+          TLS_CERT_PATH: ${{ vars.TLS_CERT_PATH || '/etc/nginx/certs/fullchain.pem' }}
+          TLS_KEY_PATH: ${{ vars.TLS_KEY_PATH || '/etc/nginx/certs/privkey.pem' }}
+          BACK_HTTP_PORT: ${{ vars.BACK_HTTP_PORT || '8080' }}
+          BACK_HEALTH_PATH: ${{ vars.BACK_HEALTH_PATH || '/api/health' }}
+          FRONT_HTTP_PORT: ${{ vars.FRONT_HTTP_PORT || '3000' }}
+          MIGRATION_COMMAND: ${{ vars.MIGRATION_COMMAND || 'php bin/console doctrine:migrations:migrate --no-interaction' }}
+          WORKER_DEFAULT_COMMAND: ${{ vars.WORKER_DEFAULT_COMMAND || 'php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M' }}
+          WORKER_MAIL_COMMAND: ${{ vars.WORKER_MAIL_COMMAND || 'php bin/console messenger:consume async_mail --time-limit=3600 --memory-limit=256M' }}
+          WORKER_OUTBOX_COMMAND: ${{ vars.WORKER_OUTBOX_COMMAND || 'php bin/console messenger:consume async_outbox --time-limit=3600 --memory-limit=256M' }}
+          SCHEDULER_COMMAND: ${{ vars.SCHEDULER_COMMAND || '/usr/local/bin/scheduler-loop.sh' }}
+          SCHEDULER_TICK_COMMAND: ${{ vars.SCHEDULER_TICK_COMMAND || 'php bin/console app:schedule:run' }}
+          MERCURE_CORS_ALLOWED_ORIGINS: ${{ vars.MERCURE_CORS_ALLOWED_ORIGINS || format('https://{0}', vars.APP_DOMAIN) }}
+          MERCURE_PUBLISH_ALLOWED_ORIGINS: ${{ vars.MERCURE_PUBLISH_ALLOWED_ORIGINS || format('https://{0}', vars.APP_DOMAIN) }}
+          ENABLE_OBSERVABILITY: ${{ vars.ENABLE_OBSERVABILITY || '0' }}
+          GRAFANA_AUTH_BASIC_REALM: ${{ vars.GRAFANA_AUTH_BASIC_REALM || 'off' }}
+          PROMETHEUS_RETENTION: ${{ vars.PROMETHEUS_RETENTION || '7d' }}
+          LOKI_RETENTION: ${{ vars.LOKI_RETENTION || '168h' }}
+          ENABLE_MEDIA_EDGE: ${{ vars.ENABLE_MEDIA_EDGE || '0' }}
+          MEDIA_EDGE_BASE_URL: ${{ vars.MEDIA_EDGE_BASE_URL || '' }}
+          RELEASE_STATE_ROOT: ${{ vars.RELEASE_STATE_ROOT || '' }}
+          REQUESTED_BACK_TAG: ${{ needs.prepare.outputs.back_version }}
+          REQUESTED_FRONT_TAG: ${{ needs.prepare.outputs.front_version }}
+        run: |
+          resolve_current_tag() {
+            local service="$1"
+            local key="$2"
+            local default_tag="$3"
+            local state_dir
+            state_dir="$(./scripts/release-state-dir.sh "${DEPLOY_ENV}")"
+
+            if [ -f "${state_dir}/current.env" ]; then
+              local current_tag
+              current_tag="$(awk -F= -v target="$key" '$1 == target { print substr($0, index($0, "=") + 1) }' "${state_dir}/current.env" | tail -n 1)"
+              if [ -n "$current_tag" ]; then
+                printf '%s' "$current_tag"
+                return 0
+              fi
+            fi
+
+            echo "Unable to resolve current ${service} tag from persisted release state, falling back to ${default_tag}" >&2
+            printf '%s' "$default_tag"
+          }
+
+          if [ "${REQUESTED_BACK_TAG}" = "__KEEP_CURRENT__" ]; then
+            BACK_IMAGE_TAG="$(resolve_current_tag backend BACK_IMAGE_TAG latest)"
+            export BACK_IMAGE_TAG
+          fi
+
+          if [ "${REQUESTED_FRONT_TAG}" = "__KEEP_CURRENT__" ]; then
+            FRONT_IMAGE_TAG="$(resolve_current_tag frontend FRONT_IMAGE_TAG latest)"
+            export FRONT_IMAGE_TAG
+          fi
+
+          ./scripts/render-compose-env.sh .env
+
+      - name: Write runtime env
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          APP_ENV: ${{ vars.APP_ENV || 'prod' }}
+          APP_DEBUG: ${{ vars.APP_DEBUG || '0' }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'app' }}
+          MYSQL_USER: ${{ vars.MYSQL_USER || 'app' }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          REDIS_URL: ${{ vars.REDIS_URL || 'redis://redis:6379' }}
+          MESSENGER_TRANSPORT_DSN: ${{ vars.MESSENGER_TRANSPORT_DSN || 'redis://redis:6379/messages' }}
+          MESSENGER_MAIL_TRANSPORT_DSN: ${{ vars.MESSENGER_MAIL_TRANSPORT_DSN || 'redis://redis:6379/messages/mail' }}
+          MESSENGER_OUTBOX_TRANSPORT_DSN: ${{ vars.MESSENGER_OUTBOX_TRANSPORT_DSN || 'redis://redis:6379/messages/outbox' }}
+          MESSENGER_FAILED_TRANSPORT_DSN: ${{ vars.MESSENGER_FAILED_TRANSPORT_DSN || 'redis://redis:6379/messages/failed' }}
+          MERCURE_JWT_SECRET: ${{ secrets.MERCURE_JWT_SECRET }}
+          MAILER_DSN: ${{ secrets.MAILER_DSN || 'null://null' }}
+          MAILER_FROM: ${{ vars.MAILER_FROM || 'no-reply@example.test' }}
+          APP_FRONT_BASE_URL: ${{ vars.APP_FRONT_BASE_URL || format('https://{0}', vars.APP_DOMAIN) }}
+          DEFAULT_URI: ${{ vars.DEFAULT_URI || format('https://{0}', vars.APP_DOMAIN) }}
+          BACK_HTTP_PORT: ${{ vars.BACK_HTTP_PORT || '8080' }}
+          API_BASE_URL: ${{ vars.API_BASE_URL || format('http://back:{0}/api', vars.BACK_HTTP_PORT || '8080') }}
+          MEDIA_EDGE_BASE_URL: ${{ vars.MEDIA_EDGE_BASE_URL || '' }}
+          APP_MEDIA_PUBLIC_BASE_URL: ${{ vars.APP_MEDIA_PUBLIC_BASE_URL || format('https://{0}/uploads/media', vars.APP_DOMAIN) }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || format('https://{0}', vars.APP_DOMAIN) }}
+          NEXT_PUBLIC_MERCURE_URL: ${{ vars.NEXT_PUBLIC_MERCURE_URL || format('https://{0}/.well-known/mercure', vars.APP_DOMAIN) }}
+          NEXT_PUBLIC_MERCURE_DISABLED: ${{ vars.NEXT_PUBLIC_MERCURE_DISABLED || 'false' }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '' }}
+          NEXT_PUBLIC_MEDIA_BASE_URL: ${{ vars.NEXT_PUBLIC_MEDIA_BASE_URL || vars.MEDIA_EDGE_BASE_URL || format('https://{0}/uploads/media', vars.APP_DOMAIN) }}
+          NEXT_PUBLIC_MEDIA_UPLOAD_BASE_URL: ${{ vars.NEXT_PUBLIC_MEDIA_UPLOAD_BASE_URL || format('https://{0}', vars.APP_DOMAIN) }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '' }}
+          B2_ENDPOINT: ${{ vars.B2_ENDPOINT || '' }}
+          B2_BUCKET: ${{ vars.B2_BUCKET || '' }}
+          B2_PREFIX: ${{ vars.B2_PREFIX || '' }}
+          JWT_SECRET_KEY: ${{ vars.JWT_SECRET_KEY || '%kernel.project_dir%/config/jwt/private.pem' }}
+          JWT_PUBLIC_KEY: ${{ vars.JWT_PUBLIC_KEY || '%kernel.project_dir%/config/jwt/public.pem' }}
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE || 'change-me' }}
+          JWT_PRIVATE_KEY_PEM: ${{ secrets.JWT_PRIVATE_KEY_PEM || '' }}
+          JWT_PUBLIC_KEY_PEM: ${{ secrets.JWT_PUBLIC_KEY_PEM || '' }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY || '' }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET || '' }}
+          GRAFANA_ADMIN_USER: ${{ vars.GRAFANA_ADMIN_USER || 'admin' }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD || 'change-me-observe' }}
+          GRAFANA_SECRET_KEY: ${{ secrets.GRAFANA_SECRET_KEY || 'change-me-observe' }}
+        run: |
+          set -euo pipefail
+          ./scripts/validate-required-env.sh runtime
+          if [ "${{ vars.ENABLE_OBSERVABILITY || '0' }}" = "1" ]; then
+            ./scripts/validate-required-env.sh observability
+          fi
+          ./scripts/render-runtime-env.sh "${{ needs.prepare.outputs.environment }}"
+
+      - name: Write Grafana htpasswd
+        env:
+          GRAFANA_HTPASSWD: ${{ secrets.GRAFANA_HTPASSWD || '' }}
+          GRAFANA_BASIC_AUTH_USER: ${{ vars.GRAFANA_ADMIN_USER || 'admin' }}
+          GRAFANA_BASIC_AUTH_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD || 'change-me-observe' }}
+        run: |
+          ./scripts/render-grafana-htpasswd.sh
+
+      - name: Optional registry login
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD || '' }}
+        if: vars.REGISTRY_SERVER != '' && vars.REGISTRY_USERNAME != '' && env.REGISTRY_PASSWORD != ''
+        run: |
+          echo "${REGISTRY_PASSWORD}" | docker login "${{ vars.REGISTRY_SERVER }}" --username "${{ vars.REGISTRY_USERNAME }}" --password-stdin
+
+      - name: Validate Compose
+        run: |
+          docker compose -f docker-compose.yml config >/dev/null
+
+      - name: Pull images
+        run: |
+          docker compose -f docker-compose.yml pull
+
+      - name: Start dependencies
+        run: |
+          docker compose -f docker-compose.yml up -d --remove-orphans db redis mercure
+
+      - name: Backup current database state
+        if: needs.prepare.outputs.skip_migrations == 'false'
+        env:
+          DEPLOY_ENV: ${{ needs.prepare.outputs.environment }}
+          RELEASE_STATE_ROOT: ${{ vars.RELEASE_STATE_ROOT || '' }}
+        run: |
+          set -euo pipefail
+          state_dir="$(./scripts/release-state-dir.sh "${DEPLOY_ENV}")"
+          mkdir -p "${state_dir}"
+          COMPOSE_FILES='-f docker-compose.yml' ./scripts/backup.sh "${state_dir}/pending-previous-db.sql.gz"
+
+      - name: Run migrations
+        if: needs.prepare.outputs.skip_migrations == 'false'
+        run: |
+          docker compose -f docker-compose.yml run --rm back sh -lc "${{ vars.MIGRATION_COMMAND || 'php bin/console doctrine:migrations:migrate --no-interaction' }}"
+
+      - name: Start application
+        run: |
+          docker compose -f docker-compose.yml up -d --remove-orphans back front nginx
+
+      - name: Start workers and scheduler
+        run: |
+          docker compose -f docker-compose.yml up -d worker_default worker_mail worker_outbox scheduler
+
+      - name: Validate background services
+        run: |
+          ./scripts/check-background-services.sh
+
+      - name: Health check
+        run: |
+          BACK_HEALTH_PATH="${{ vars.BACK_HEALTH_PATH || '/api/health' }}" ./scripts/healthcheck.sh
+
+      - name: Promote release state
+        env:
+          DEPLOY_ENV: ${{ needs.prepare.outputs.environment }}
+          RELEASE_STATE_ROOT: ${{ vars.RELEASE_STATE_ROOT || '' }}
+        run: |
+          if [ "${{ needs.prepare.outputs.skip_migrations }}" = "false" ]; then
+            export PRE_MIGRATION_BACKUP_FILE="$(./scripts/release-state-dir.sh "${DEPLOY_ENV}")/pending-previous-db.sql.gz"
+          fi
+          ./scripts/promote-release-state.sh
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "## Deployment summary"
+            echo
+            echo "- Trigger: ${{ needs.prepare.outputs.trigger_source }}"
+            echo "- Environment: ${{ needs.prepare.outputs.environment }}"
+            echo "- Backend: ${{ needs.prepare.outputs.back_image || vars.BACK_IMAGE }}:${{ needs.prepare.outputs.back_version }}"
+            echo "- Frontend: ${{ needs.prepare.outputs.front_image || vars.FRONT_IMAGE }}:${{ needs.prepare.outputs.front_version }}"
+            echo "- Skip migrations: ${{ needs.prepare.outputs.skip_migrations }}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Clean generated runtime files
+        if: always()
+        run: |
+          rm -f .env "env/.env.${{ needs.prepare.outputs.environment }}" env/grafana.htpasswd

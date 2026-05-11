@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Prepare examples
+        run: |
+          cp .env.example .env
+          cp env/.env.dev.example env/.env.dev
+          cp bootstrap/github/environment.env.example bootstrap/github/ci.env
+          ./scripts/render-grafana-htpasswd.sh
+
+      - name: Mark scripts executable
+        run: |
+          chmod +x scripts/*.sh
+
+      - name: Bash syntax
+        run: |
+          bash -n scripts/*.sh
+
+      - name: Validate Compose
+        run: |
+          BACK_BUILD_CONTEXT=. FRONT_BUILD_CONTEXT=. docker compose -f docker-compose.yml -f docker-compose.dev.yml config >/dev/null
+
+      - name: Validate observability files
+        run: |
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro" -v "$PWD/monitoring/prometheus/alerts:/etc/prometheus/alerts:ro" prom/prometheus:v3.11.3 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring/prometheus/alerts:/etc/prometheus/alerts:ro" prom/prometheus:v3.11.3 check rules /etc/prometheus/alerts/containers.yml
+          docker run --rm -v "$PWD/monitoring/loki/config.yml:/etc/loki/config.yml:ro" grafana/loki:3.7.1 -config.file=/etc/loki/config.yml -config.expand-env=true -verify-config=true
+
+      - name: Validate edge worker syntax
+        run: |
+          cp edge-media-worker/worker.js /tmp/worker.mjs
+          node --check /tmp/worker.mjs
+
+  integration-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Checkout backend sources
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.BACK_SOURCE_REPOSITORY || format('{0}/starter_back', github.repository_owner) }}
+          path: sources/starter_back
+          token: ${{ secrets.CI_READ_REPOSITORIES_TOKEN || github.token }}
+
+      - name: Checkout frontend sources
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.FRONT_SOURCE_REPOSITORY || format('{0}/starter_front', github.repository_owner) }}
+          path: sources/starter_front
+          token: ${{ secrets.CI_READ_REPOSITORIES_TOKEN || github.token }}
+
+      - name: Prepare integration env
+        run: |
+          cp .env.example .env
+          cp env/.env.dev.example env/.env.dev
+          chmod +x scripts/*.sh
+          APP_DOMAIN=app.localhost \
+          COMPOSE_PROJECT_NAME=starterci \
+          HOST_HTTP_PORT=8088 \
+          HOST_HTTPS_PORT=8443 \
+          BACK_BUILD_CONTEXT=./sources/starter_back \
+          FRONT_BUILD_CONTEXT=./sources/starter_front \
+          ENABLE_OBSERVABILITY=0 \
+          ./scripts/render-compose-env.sh .env
+          APP_DOMAIN=app.localhost \
+          APP_ENV=dev \
+          APP_DEBUG=1 \
+          APP_SECRET=dev-secret-for-ci \
+          MYSQL_PASSWORD=dev-password \
+          MYSQL_ROOT_PASSWORD=dev-root-password \
+          MERCURE_JWT_SECRET=dev-mercure-secret-for-ci \
+          NEXT_PUBLIC_APP_URL=https://app.localhost:8443 \
+          NEXT_PUBLIC_MEDIA_UPLOAD_BASE_URL=https://app.localhost:8443 \
+          NEXT_PUBLIC_MERCURE_URL=https://app.localhost:8443/.well-known/mercure \
+          NEXT_PUBLIC_MERCURE_DISABLED=false \
+          API_BASE_URL=http://back:8080/api \
+          ./scripts/render-runtime-env.sh dev
+          ./scripts/render-grafana-htpasswd.sh
+          ./scripts/generate-dev-certs.sh app.localhost
+
+      - name: Validate Compose
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config >/dev/null
+
+      - name: Start dependencies
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build db redis mercure
+
+      - name: Run migrations
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm back sh -lc 'php bin/console doctrine:migrations:migrate --no-interaction'
+
+      - name: Start full stack
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build back worker_default worker_mail worker_outbox scheduler front nginx
+
+      - name: Validate stack runtime
+        run: |
+          COMPOSE_FILES='-f docker-compose.yml -f docker-compose.dev.yml' \
+          BACK_HEALTH_URL='https://localhost:8443/api/health' \
+          FRONT_HEALTH_URL='https://localhost:8443/' \
+          API_DOC_URL='https://localhost:8443/api/doc.json' \
+          MERCURE_HEALTH_URL='https://localhost:8443/.well-known/mercure' \
+          ./scripts/assert-stack-runtime.sh
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color --tail=200
+
+      - name: Stop stack
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v --remove-orphans
