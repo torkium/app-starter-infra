@@ -5,7 +5,7 @@
 ```bash
 cp .env.example .env
 cp env/.env.dev.example env/.env.dev
-./scripts/generate-dev-certs.sh app.localhost
+./scripts/generate-dev-certs.sh app.local
 ./scripts/render-grafana-htpasswd.sh
 make up
 ```
@@ -28,6 +28,7 @@ make observability-up
 ## Notes
 
 - `make up` utilise `docker-compose.yml` et `docker-compose.dev.yml`.
+- `make up` lance d'abord le coeur du stack, applique les migrations, puis demarre workers et scheduler.
 - Pour simuler un environnement image-only, definir `COMPOSE_FILES='-f docker-compose.yml'`.
 - Les variables supplementaires propres a `starter_back` ou `starter_front` doivent etre ajoutees dans `env/.env.<env>`.
 - Le profil `observability` est optionnel. Sans `make observability-up`, `/grafana/` ne servira rien.

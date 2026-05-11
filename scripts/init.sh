@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ROOT_DIR}/.env"
 RUNTIME_FILE="${ROOT_DIR}/env/.env.dev"
 BOOTSTRAP_FILE="${ROOT_DIR}/bootstrap/github/dev.env"
-APP_DOMAIN="${1:-app.localhost}"
+APP_DOMAIN="${1:-app.local}"
 
 mkdir -p "${ROOT_DIR}/env" "${ROOT_DIR}/bootstrap/github"
 

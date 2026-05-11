@@ -7,7 +7,7 @@ OUTPUT_FILE="$ROOT_DIR/env/.env.${TARGET_ENV}"
 
 mkdir -p "$ROOT_DIR/env"
 
-: "${APP_DOMAIN:=app.localhost}"
+: "${APP_DOMAIN:=app.local}"
 : "${APP_ENV:=prod}"
 : "${APP_DEBUG:=0}"
 : "${APP_SECRET:=change-me}"

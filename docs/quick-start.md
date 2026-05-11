@@ -180,7 +180,6 @@ Infra complete recommande :
 ```bash
 cd starter_infra
 make stack-up
-make migrate
 make stack-assert
 ```
 
@@ -189,6 +188,7 @@ Ce mode devient la reference pour le dev pack complet :
 - front + back + workers + scheduler + proxy TLS
 - Mercure
 - Mailpit sur `http://localhost:8025`
+- migrations executees automatiquement pendant `make up`
 
 ## 10. Verification finale minimale
 

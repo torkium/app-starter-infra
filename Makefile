@@ -4,9 +4,13 @@ DEPLOY_ENV ?= dev
 BACKUP_DIR ?= backups
 OBSERVABILITY_PROFILE ?= --profile observability
 MIGRATION_COMMAND ?= php bin/console doctrine:migrations:migrate --no-interaction
+CORE_SERVICES ?= db redis mercure mailpit back front nginx
+POST_MIGRATION_SERVICES ?= worker_default worker_mail worker_outbox scheduler
 
 up:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up -d --build $(CORE_SERVICES)
+	$(COMPOSE) run --rm back sh -lc '$(MIGRATION_COMMAND)'
+	$(COMPOSE) up -d --build $(POST_MIGRATION_SERVICES)
 
 stack-up: up
 
@@ -25,7 +29,8 @@ pull:
 	$(COMPOSE) pull --ignore-buildable
 
 restart:
-	$(COMPOSE) up -d --force-recreate
+	$(COMPOSE) up -d --force-recreate $(CORE_SERVICES)
+	$(COMPOSE) up -d --force-recreate $(POST_MIGRATION_SERVICES)
 
 stack-restart: restart
 

@@ -98,11 +98,11 @@ make stack-assert
 - retries before failure
 
 Default local entrypoints:
-- App: `https://app.localhost`
-- Mercure: `https://app.localhost/.well-known/mercure`
+- App: `https://app.local`
+- Mercure: `https://app.local/.well-known/mercure`
 - Mailpit UI: `http://localhost:8025`
 - Mailpit SMTP: `localhost:1025`
-- Grafana: `https://app.localhost/grafana/` when observability is enabled
+- Grafana: `https://app.local/grafana/` when observability is enabled
 
 ## Default Runtime Versions
 
@@ -190,7 +190,7 @@ If you use the full trio:
 2. Initialize `starter_front`
 3. Initialize `starter_infra`
 4. Start the integrated stack from `starter_infra`
-5. Run migrations from `starter_infra`
+5. Let `make up` run the first migrations, or use `make migrate` after manual restarts
 6. Validate the stack with `make stack-assert`
 
 `starter_infra` is the repo that ties the other two together for local full-stack work and deployment automation.
