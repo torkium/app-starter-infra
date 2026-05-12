@@ -91,6 +91,8 @@ jobs:
           NEXT_PUBLIC_MERCURE_URL=https://app.localhost:8443/.well-known/mercure \
           NEXT_PUBLIC_MERCURE_DISABLED=false \
           API_BASE_URL=http://back:8080/api \
+          JWT_SECRET_KEY=/run/starter-secrets/jwt/private.pem \
+          JWT_PUBLIC_KEY=/run/starter-secrets/jwt/public.pem \
           ./scripts/render-runtime-env.sh dev
           ./scripts/render-grafana-htpasswd.sh
           ./scripts/generate-dev-certs.sh app.localhost
