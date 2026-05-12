@@ -9,6 +9,8 @@ MIGRATION_COMMAND ?= php bin/console doctrine:migrations:migrate --no-interactio
 CORE_SERVICES ?= db redis mercure back front nginx
 DEV_CORE_SERVICES ?= mailpit
 POST_MIGRATION_SERVICES ?= worker_default worker_mail worker_outbox scheduler
+AUTO_DOCKER_CLEANUP ?= 1
+DOCKER_CLEANUP_MODE ?= dev
 
 up:
 	$(COMPOSE) up -d --build $(CORE_SERVICES) $(if $(filter dev,$(DEPLOY_ENV)),$(DEV_CORE_SERVICES))
@@ -16,6 +18,14 @@ up:
 	$(COMPOSE) up -d --build $(POST_MIGRATION_SERVICES)
 
 stack-up: up
+
+dev-up:
+	$(DEV_COMPOSE) up -d --build --renew-anon-volumes $(CORE_SERVICES) $(DEV_CORE_SERVICES)
+	$(DEV_COMPOSE) run --rm back sh -lc '$(MIGRATION_COMMAND)'
+	$(DEV_COMPOSE) up -d --build $(POST_MIGRATION_SERVICES)
+	@if [ "$(AUTO_DOCKER_CLEANUP)" = "1" ]; then ./scripts/docker-cleanup.sh $(DOCKER_CLEANUP_MODE); fi
+
+stack-dev: dev-up
 
 init:
 	./scripts/init.sh $(APP_DOMAIN)
@@ -71,6 +81,15 @@ restore:
 rollback:
 	./scripts/rollback.sh $(TARGET) $(VERSION)
 
+docker-clean:
+	./scripts/docker-cleanup.sh dev
+
+docker-clean-safe:
+	./scripts/docker-cleanup.sh safe
+
+docker-clean-hard:
+	./scripts/docker-cleanup.sh hard
+
 certs:
 	./scripts/generate-dev-certs.sh $(APP_DOMAIN)
 
@@ -92,4 +111,4 @@ observability-logs:
 stack-assert:
 	COMPOSE_FILES="$(COMPOSE_FILES)" ./scripts/assert-stack-runtime.sh
 
-.PHONY: init up stack-up down stack-down build pull restart stack-restart logs front-dev front-logs ps config migrate health backup backup-offsite restore rollback certs observability-up observability-down observability-targets observability-alerts observability-logs stack-assert
+.PHONY: init up stack-up dev-up stack-dev down stack-down build pull restart stack-restart logs front-dev front-logs ps config migrate health backup backup-offsite restore rollback docker-clean docker-clean-safe docker-clean-hard certs observability-up observability-down observability-targets observability-alerts observability-logs stack-assert

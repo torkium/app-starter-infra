@@ -370,3 +370,10 @@ jobs:
         if: always()
         run: |
           rm -f .env "env/.env.${{ needs.prepare.outputs.environment }}" env/grafana.htpasswd
+
+      - name: Prune old Docker resources
+        if: always()
+        env:
+          DOCKER_CLEANUP_UNTIL: ${{ vars.DOCKER_CLEANUP_UNTIL || '168h' }}
+        run: |
+          ./scripts/docker-cleanup.sh deploy

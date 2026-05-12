@@ -158,8 +158,8 @@ done
 
 for file in "${FILES[@]}"; do
   target="${ROOT_DIR}/${file}"
-  replace_literal "$target" "../starter_back" "../${BACK_REPO}"
-  replace_literal "$target" "../starter_front" "../${FRONT_REPO}"
+  replace_literal "$target" "../app-starter-back" "../${BACK_REPO}"
+  replace_literal "$target" "../app-starter-front" "../${FRONT_REPO}"
   replace_literal "$target" "/run/starter-secrets/jwt" "/run/${PROJECT_NAME}-secrets/jwt"
   replace_literal "$target" "ghcr.io/example/starter-back" "${REGISTRY}/${BACK_REPO}"
   replace_literal "$target" "ghcr.io/example/starter-front" "${REGISTRY}/${FRONT_REPO}"

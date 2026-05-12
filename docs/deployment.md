@@ -9,7 +9,7 @@
 ## Fichiers
 
 - `docker-compose.yml` : stack image-first pour CI/CD et serveurs.
-- `docker-compose.dev.yml` : override de build local depuis `../starter_back` et `../starter_front`.
+- `docker-compose.dev.yml` : override de build local depuis `../app-starter-back` et `../app-starter-front`.
 - `env/.env.<env>` : variables runtime partagees par les containers.
 - `.env` : variables Compose generees par `scripts/render-compose-env.sh`.
 

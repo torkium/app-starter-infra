@@ -26,7 +26,7 @@ The repo is intentionally generic and contains no project-specific hostnames, se
 ## What Is Included
 
 - Docker Compose stack for backend, frontend, MySQL, Redis, Mercure, Mailpit, Nginx, workers, and scheduler
-- local development override using sibling repos `../starter_back` and `../starter_front`
+- local development override using sibling repos `../app-starter-back` and `../app-starter-front`
 - optional observability stack with Grafana, Prometheus, Loki, Alloy, and cAdvisor
 - runtime environment templates
 - local TLS certificate tooling
@@ -60,7 +60,7 @@ Typical combinations:
 
 ```bash
 make init
-make stack-up
+make dev-up
 ```
 
 Project bootstrap from the full trio:
@@ -85,6 +85,7 @@ Useful commands:
 ```bash
 make ps
 make config
+make dev-up
 make stack-restart
 make front-dev
 make front-logs
@@ -108,9 +109,14 @@ Default local entrypoints:
 
 ### Frontend Development
 
-With `docker-compose.dev.yml`, the `front` service runs the Next.js dev server from the sibling `../starter_front` repository. The source directory is bind-mounted into the container, while `node_modules` and `.next` stay in Docker volumes. This keeps the integrated HTTPS/Nginx stack while allowing frontend edits to hot reload without rebuilding the runtime image.
+Use `make dev-up` for the normal local development stack. It starts the full stack with `docker-compose.dev.yml`, so the `front` service runs the Next.js dev server from the sibling `../app-starter-front` repository. The source directory is bind-mounted into the container, while `node_modules` and `.next` stay in Docker volumes. This keeps the integrated HTTPS/Nginx stack while allowing frontend edits to hot reload without rebuilding the runtime image.
 
-Use this after frontend dependency changes, Dockerfile changes, or when you only want to refresh the frontend and proxy. The command rebuilds the dev image, recreates Nginx so template changes are applied, and renews anonymous frontend volumes:
+```bash
+make dev-up
+make front-logs
+```
+
+Use this after frontend dependency changes, Dockerfile changes, or when you only want to refresh the frontend and proxy without restarting the whole stack. The command rebuilds the dev image, recreates Nginx so template changes are applied, and renews anonymous frontend volumes:
 
 ```bash
 make front-dev

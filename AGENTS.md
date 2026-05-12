@@ -5,7 +5,7 @@ Starter infra generique pour une application Symfony + Next.js dockerisee.
 ## Perimetre
 
 - Ce repo orchestre uniquement l'infra et le runtime local/deploiement.
-- Les repos applicatifs attendus sont `../starter_back` et `../starter_front` en local.
+- Les repos applicatifs attendus sont `../app-starter-back` et `../app-starter-front` en local.
 - Ne pas introduire de dependance a un contexte metier specifique.
 
 ## Standards

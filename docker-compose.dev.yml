@@ -1,49 +1,63 @@
 services:
   back:
     build:
-      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      context: ${BACK_BUILD_CONTEXT:-../app-starter-back}
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+      args:
+        INSTALL_DEV_DEPS: "1"
     volumes:
-      - media_uploads:/app/public/uploads/media
-      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+      - media_uploads:/app/var/media/uploads
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
 
   worker_default:
     build:
-      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      context: ${BACK_BUILD_CONTEXT:-../app-starter-back}
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+      args:
+        INSTALL_DEV_DEPS: "1"
     volumes:
-      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+      - media_uploads:/app/var/media/uploads
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
 
   worker_mail:
     build:
-      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      context: ${BACK_BUILD_CONTEXT:-../app-starter-back}
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+      args:
+        INSTALL_DEV_DEPS: "1"
     volumes:
-      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+      - media_uploads:/app/var/media/uploads
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
 
   worker_outbox:
     build:
-      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      context: ${BACK_BUILD_CONTEXT:-../app-starter-back}
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+      args:
+        INSTALL_DEV_DEPS: "1"
     volumes:
-      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+      - media_uploads:/app/var/media/uploads
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
 
   scheduler:
     build:
-      context: ${BACK_BUILD_CONTEXT:-../starter_back}
+      context: ${BACK_BUILD_CONTEXT:-../app-starter-back}
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
+      args:
+        INSTALL_DEV_DEPS: "1"
     volumes:
       - ./scripts/scheduler-loop.sh:/usr/local/bin/scheduler-loop.sh:ro
-      - ${BACK_BUILD_CONTEXT:-../starter_back}/config/jwt:/run/starter-secrets/jwt:ro
+      - media_uploads:/app/var/media/uploads
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
 
   front:
     build:
-      context: ${FRONT_BUILD_CONTEXT:-../starter_front}
+      context: ${FRONT_BUILD_CONTEXT:-../app-starter-front}
       dockerfile: ${FRONT_DOCKERFILE:-Dockerfile}
       target: dev
     command: npm run dev
     volumes:
-      - ${FRONT_BUILD_CONTEXT:-../starter_front}:/app
+      - ${FRONT_BUILD_CONTEXT:-../app-starter-front}:/app
       - /app/node_modules
       - /app/.next
 

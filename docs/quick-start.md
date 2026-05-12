@@ -2,7 +2,7 @@
 
 ## 0. Bootstrap recommande
 
-Depuis `starter_infra`, le chemin le plus fiable est l'orchestrateur :
+Depuis `app-starter-infra`, le chemin le plus fiable est l'orchestrateur :
 
 ```bash
 ./scripts/bootstrap-project.sh \
@@ -20,15 +20,15 @@ Le script :
 - laisse uniquement les actions GitHub reelles a faire a la main
 
 Par defaut, l'orchestrateur sait partir d'un trio clone avec les noms de dossiers
-locaux `starter_back`, `starter_front`, `starter_infra`.
+locaux `app-starter-back`, `app-starter-front`, `app-starter-infra`.
 
 Ce guide sert de fil directeur pour repartir du trio `starter_back`,
-`starter_front`, `starter_infra` et obtenir un projet utilisable sans chasse aux
+`starter_front`, `starter_infra` dans les dossiers `app-starter-*` et obtenir un projet utilisable sans chasse aux
 variables.
 
 Convention de lecture du guide :
 
-- avant bootstrap ou renommage local, les chemins ci-dessous sont `starter_*`
+- avant bootstrap ou renommage local, les chemins ci-dessous sont `app-starter-*`
 - apres bootstrap et renommage local des dossiers, remplacez-les par vos noms de repos reels
 
 ## 1. Choisir le mode d'usage
@@ -51,13 +51,13 @@ make init
 
 Ordre recommande :
 
-1. `starter_back`
-2. `starter_front`
-3. `starter_infra`
+1. `app-starter-back`
+2. `app-starter-front`
+3. `app-starter-infra`
 
 ## 3. Configurer le backend
 
-Fichier principal : `starter_back/.env`
+Fichier principal : `app-starter-back/.env`
 
 Variables a verifier en premier :
 
@@ -74,7 +74,7 @@ Pour les cles JWT :
 
 ## 4. Configurer le frontend
 
-Fichier principal : `starter_front/.env`
+Fichier principal : `app-starter-front/.env`
 
 Variables a verifier :
 
@@ -90,9 +90,9 @@ Variables a verifier :
 
 Fichiers principaux :
 
-- `starter_infra/.env`
-- `starter_infra/env/.env.dev`
-- `starter_infra/bootstrap/github/dev.env` ou equivalent
+- `app-starter-infra/.env`
+- `app-starter-infra/env/.env.dev`
+- `app-starter-infra/bootstrap/github/dev.env` ou equivalent
 
 Variables/secrets les plus structurants :
 
@@ -123,12 +123,12 @@ Creer les cles dans le dashboard Stripe :
 
 Ou les mettre :
 
-- `starter_back/.env`
+- `app-starter-back/.env`
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
-- `starter_front/.env`
+- `app-starter-front/.env`
   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `starter_infra/env/.env.<env>`
+- `app-starter-infra/env/.env.<env>`
   - `STRIPE_SECRET_KEY`
   - `STRIPE_WEBHOOK_SECRET`
   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
@@ -144,12 +144,12 @@ Si vous servez des medias prives :
 
 Ou mettre les valeurs :
 
-- `starter_infra/env/.env.<env>`
+- `app-starter-infra/env/.env.<env>`
   - `B2_ENDPOINT`
   - `B2_BUCKET`
   - `B2_PREFIX`
   - `MEDIA_EDGE_BASE_URL`
-- `starter_infra/bootstrap/github/*.env`
+- `app-starter-infra/bootstrap/github/*.env`
   - memes cles cote GitHub Environment
 
 Voir aussi [cloudflare-worker.md](./cloudflare-worker.md).
@@ -163,7 +163,7 @@ Le point d'entree est :
 Bootstrap recommande :
 
 ```bash
-cd starter_infra
+cd app-starter-infra
 cp bootstrap/github/environment.env.example bootstrap/github/dev.env
 ./scripts/bootstrap-github-environment.sh --envs=dev --env-file=bootstrap/github/dev.env --repo=my-org/my-app-infra --mask
 ```
@@ -178,8 +178,8 @@ Pour les repos applicatifs, ajouter aussi :
 Infra complete recommande :
 
 ```bash
-cd starter_infra
-make stack-up
+cd app-starter-infra
+make dev-up
 make stack-assert
 ```
 
@@ -195,21 +195,21 @@ Ce mode devient la reference pour le dev pack complet :
 Backend :
 
 ```bash
-cd starter_back
+cd app-starter-back
 make test
 ```
 
 Frontend :
 
 ```bash
-cd starter_front
+cd app-starter-front
 make check
 ```
 
 Infra :
 
 ```bash
-cd starter_infra
+cd app-starter-infra
 make config
 make health
 make stack-assert
