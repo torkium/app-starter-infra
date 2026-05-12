@@ -83,6 +83,28 @@ require_not_weak_secret() {
   esac
 }
 
+require_prod_secret() {
+  local key="$1"
+  local minimum="${2:-24}"
+
+  require_min_length "$key" "$minimum"
+  require_not_weak_secret "$key"
+}
+
+require_no_test_key_in_prod() {
+  local key="$1"
+  local value="${!key:-}"
+
+  if [ "${DEPLOY_ENV:-dev}" = "prod" ] || [ "${APP_ENV:-dev}" = "prod" ]; then
+    case "$value" in
+      pk_test_*|sk_test_*)
+        echo "Variable ${key} must not use a test key in production" >&2
+        exit 1
+        ;;
+    esac
+  fi
+}
+
 case "$MODE" in
   compose)
     require_keys APP_DOMAIN BACK_IMAGE FRONT_IMAGE
@@ -99,6 +121,20 @@ case "$MODE" in
     fi
     if [ -n "${NEXT_PUBLIC_MEDIA_BASE_URL:-}" ]; then
       require_url NEXT_PUBLIC_MEDIA_BASE_URL
+    fi
+    if [ "${DEPLOY_ENV:-dev}" != "dev" ] || [ "${APP_ENV:-dev}" != "dev" ]; then
+      require_prod_secret APP_SECRET 32
+      require_prod_secret MYSQL_PASSWORD 24
+      require_prod_secret MYSQL_ROOT_PASSWORD 24
+      require_prod_secret MERCURE_JWT_SECRET 32
+      require_prod_secret JWT_PASSPHRASE 24
+      if [ -n "${STRIPE_SECRET_KEY:-}" ]; then
+        require_prod_secret STRIPE_SECRET_KEY 24
+        require_no_test_key_in_prod STRIPE_SECRET_KEY
+      fi
+      if [ -n "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}" ]; then
+        require_no_test_key_in_prod NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      fi
     fi
     ;;
   observability)

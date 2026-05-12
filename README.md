@@ -40,7 +40,7 @@ The repo is intentionally generic and contains no project-specific hostnames, se
 
 - Docker Engine with Docker Compose support
 - GNU Make
-- OpenSSL for local certificate and htpasswd generation during `make init`
+- `mkcert` is recommended for local HTTPS certificates, especially if you test PWA features on a custom local domain. OpenSSL is kept as a fallback for local certificate and htpasswd generation during `make init`.
 - Optional: `restic` if you want to use the offsite backup flow locally
 
 ## Related Starters
@@ -86,6 +86,8 @@ Useful commands:
 make ps
 make config
 make stack-restart
+make front-dev
+make front-logs
 make health
 make logs
 make migrate
@@ -103,6 +105,23 @@ Default local entrypoints:
 - Mailpit UI: `http://localhost:8025`
 - Mailpit SMTP: `localhost:1025`
 - Grafana: `https://app.local/grafana/` when observability is enabled
+
+### Frontend Development
+
+With `docker-compose.dev.yml`, the `front` service runs the Next.js dev server from the sibling `../starter_front` repository. The source directory is bind-mounted into the container, while `node_modules` and `.next` stay in Docker volumes. This keeps the integrated HTTPS/Nginx stack while allowing frontend edits to hot reload without rebuilding the runtime image.
+
+Use this after frontend dependency changes, Dockerfile changes, or when you only want to refresh the frontend and proxy. The command rebuilds the dev image, recreates Nginx so template changes are applied, and renews anonymous frontend volumes:
+
+```bash
+make front-dev
+make front-logs
+```
+
+For a direct frontend-only dev server outside the integrated infra, use `starter_front`’s profiled `frontend-dev` compose service:
+
+```bash
+docker compose --profile dev up frontend-dev
+```
 
 ## Default Runtime Versions
 

@@ -40,6 +40,12 @@ services:
     build:
       context: ${FRONT_BUILD_CONTEXT:-../starter_front}
       dockerfile: ${FRONT_DOCKERFILE:-Dockerfile}
+      target: dev
+    command: npm run dev
+    volumes:
+      - ${FRONT_BUILD_CONTEXT:-../starter_front}:/app
+      - /app/node_modules
+      - /app/.next
 
   nginx:
     volumes:

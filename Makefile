@@ -1,14 +1,17 @@
-COMPOSE_FILES ?= -f docker-compose.yml -f docker-compose.dev.yml
+COMPOSE_FILES ?= -f docker-compose.yml
+DEV_COMPOSE_FILES ?= $(COMPOSE_FILES) -f docker-compose.dev.yml
 COMPOSE = docker compose $(COMPOSE_FILES)
+DEV_COMPOSE = docker compose $(DEV_COMPOSE_FILES)
 DEPLOY_ENV ?= dev
 BACKUP_DIR ?= backups
 OBSERVABILITY_PROFILE ?= --profile observability
 MIGRATION_COMMAND ?= php bin/console doctrine:migrations:migrate --no-interaction
-CORE_SERVICES ?= db redis mercure mailpit back front nginx
+CORE_SERVICES ?= db redis mercure back front nginx
+DEV_CORE_SERVICES ?= mailpit
 POST_MIGRATION_SERVICES ?= worker_default worker_mail worker_outbox scheduler
 
 up:
-	$(COMPOSE) up -d --build $(CORE_SERVICES)
+	$(COMPOSE) up -d --build $(CORE_SERVICES) $(if $(filter dev,$(DEPLOY_ENV)),$(DEV_CORE_SERVICES))
 	$(COMPOSE) run --rm back sh -lc '$(MIGRATION_COMMAND)'
 	$(COMPOSE) up -d --build $(POST_MIGRATION_SERVICES)
 
@@ -29,13 +32,19 @@ pull:
 	$(COMPOSE) pull --ignore-buildable
 
 restart:
-	$(COMPOSE) up -d --force-recreate $(CORE_SERVICES)
+	$(COMPOSE) up -d --force-recreate $(CORE_SERVICES) $(if $(filter dev,$(DEPLOY_ENV)),$(DEV_CORE_SERVICES))
 	$(COMPOSE) up -d --force-recreate $(POST_MIGRATION_SERVICES)
 
 stack-restart: restart
 
 logs:
 	$(COMPOSE) logs -f
+
+front-dev:
+	$(DEV_COMPOSE) up -d --build --force-recreate --renew-anon-volumes --no-deps front nginx
+
+front-logs:
+	$(DEV_COMPOSE) logs -f front
 
 ps:
 	$(COMPOSE) ps
@@ -83,4 +92,4 @@ observability-logs:
 stack-assert:
 	COMPOSE_FILES="$(COMPOSE_FILES)" ./scripts/assert-stack-runtime.sh
 
-.PHONY: init up stack-up down stack-down build pull restart stack-restart logs ps config migrate health backup backup-offsite restore rollback certs observability-up observability-down observability-targets observability-alerts observability-logs stack-assert
+.PHONY: init up stack-up down stack-down build pull restart stack-restart logs front-dev front-logs ps config migrate health backup backup-offsite restore rollback certs observability-up observability-down observability-targets observability-alerts observability-logs stack-assert

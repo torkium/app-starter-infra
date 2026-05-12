@@ -58,7 +58,7 @@ deploiement.
 ```bash
 docker --version
 docker compose version
-make config
-make up
+DEPLOY_ENV=prod make config
+DEPLOY_ENV=prod make up
 make health
 ```
