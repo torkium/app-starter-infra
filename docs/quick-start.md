@@ -188,7 +188,7 @@ Ce mode devient la reference pour le dev pack complet :
 - front + back + workers + scheduler + proxy TLS
 - Mercure
 - Mailpit sur `http://localhost:8025`
-- migrations executees automatiquement pendant `make up`
+- migrations executees automatiquement pendant `make dev-up` ou `make up` en `DEPLOY_ENV=dev`
 
 ## 10. Verification finale minimale
 

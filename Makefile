@@ -1,8 +1,18 @@
+ENV_DEPLOY_ENV := $(DEPLOY_ENV)
+-include .env
+
+DEPLOY_ENV ?= dev
+ifneq ($(ENV_DEPLOY_ENV),)
+DEPLOY_ENV := $(ENV_DEPLOY_ENV)
+endif
+ifeq ($(DEPLOY_ENV),dev)
+COMPOSE_FILES ?= -f docker-compose.yml -f docker-compose.dev.yml
+else
 COMPOSE_FILES ?= -f docker-compose.yml
-DEV_COMPOSE_FILES ?= $(COMPOSE_FILES) -f docker-compose.dev.yml
+endif
+DEV_COMPOSE_FILES ?= -f docker-compose.yml -f docker-compose.dev.yml
 COMPOSE = docker compose $(COMPOSE_FILES)
 DEV_COMPOSE = docker compose $(DEV_COMPOSE_FILES)
-DEPLOY_ENV ?= dev
 BACKUP_DIR ?= backups
 OBSERVABILITY_PROFILE ?= --profile observability
 MIGRATION_COMMAND ?= php bin/console doctrine:migrations:migrate --no-interaction
@@ -12,7 +22,13 @@ POST_MIGRATION_SERVICES ?= worker_default worker_mail worker_outbox scheduler
 AUTO_DOCKER_CLEANUP ?= 1
 DOCKER_CLEANUP_MODE ?= dev
 
-up:
+ifeq ($(DEPLOY_ENV),dev)
+up: dev-up
+else
+up: runtime-up
+endif
+
+runtime-up:
 	$(COMPOSE) up -d --build $(CORE_SERVICES) $(if $(filter dev,$(DEPLOY_ENV)),$(DEV_CORE_SERVICES))
 	$(COMPOSE) run --rm back sh -lc '$(MIGRATION_COMMAND)'
 	$(COMPOSE) up -d --build $(POST_MIGRATION_SERVICES)
@@ -20,12 +36,34 @@ up:
 stack-up: up
 
 dev-up:
-	$(DEV_COMPOSE) up -d --build --renew-anon-volumes $(CORE_SERVICES) $(DEV_CORE_SERVICES)
+	$(DEV_COMPOSE) up -d --renew-anon-volumes $(CORE_SERVICES) $(DEV_CORE_SERVICES)
 	$(DEV_COMPOSE) run --rm back sh -lc '$(MIGRATION_COMMAND)'
-	$(DEV_COMPOSE) up -d --build $(POST_MIGRATION_SERVICES)
+	$(DEV_COMPOSE) up -d --renew-anon-volumes $(POST_MIGRATION_SERVICES)
 	@if [ "$(AUTO_DOCKER_CLEANUP)" = "1" ]; then ./scripts/docker-cleanup.sh $(DOCKER_CLEANUP_MODE); fi
 
 stack-dev: dev-up
+
+dev-build:
+	$(DEV_COMPOSE) build $(CORE_SERVICES) $(POST_MIGRATION_SERVICES)
+
+dev-restart:
+	$(DEV_COMPOSE) up -d --force-recreate --renew-anon-volumes $(CORE_SERVICES) $(DEV_CORE_SERVICES)
+	$(DEV_COMPOSE) up -d --force-recreate --renew-anon-volumes $(POST_MIGRATION_SERVICES)
+
+dev-down:
+	$(DEV_COMPOSE) down
+
+dev-logs:
+	$(DEV_COMPOSE) logs -f
+
+dev-ps:
+	$(DEV_COMPOSE) ps
+
+dev-config:
+	$(DEV_COMPOSE) config
+
+dev-migrate:
+	$(DEV_COMPOSE) run --rm back sh -lc '$(MIGRATION_COMMAND)'
 
 init:
 	./scripts/init.sh $(APP_DOMAIN)
@@ -51,7 +89,7 @@ logs:
 	$(COMPOSE) logs -f
 
 front-dev:
-	$(DEV_COMPOSE) up -d --build --force-recreate --renew-anon-volumes --no-deps front nginx
+	$(DEV_COMPOSE) up -d --force-recreate --renew-anon-volumes --no-deps front nginx
 
 front-logs:
 	$(DEV_COMPOSE) logs -f front
@@ -111,4 +149,4 @@ observability-logs:
 stack-assert:
 	COMPOSE_FILES="$(COMPOSE_FILES)" ./scripts/assert-stack-runtime.sh
 
-.PHONY: init up stack-up dev-up stack-dev down stack-down build pull restart stack-restart logs front-dev front-logs ps config migrate health backup backup-offsite restore rollback docker-clean docker-clean-safe docker-clean-hard certs observability-up observability-down observability-targets observability-alerts observability-logs stack-assert
+.PHONY: init up runtime-up stack-up dev-up stack-dev dev-build dev-restart dev-down dev-logs dev-ps dev-config dev-migrate down stack-down build pull restart stack-restart logs front-dev front-logs ps config migrate health backup backup-offsite restore rollback docker-clean docker-clean-safe docker-clean-hard certs observability-up observability-down observability-targets observability-alerts observability-logs stack-assert

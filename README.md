@@ -107,23 +107,38 @@ Default local entrypoints:
 - Mailpit SMTP: `localhost:1025`
 - Grafana: `https://app.local/grafana/` when observability is enabled
 
-### Frontend Development
+### Local Development
 
-Use `make dev-up` for the normal local development stack. It starts the full stack with `docker-compose.dev.yml`, so the `front` service runs the Next.js dev server from the sibling `../app-starter-front` repository. The source directory is bind-mounted into the container, while `node_modules` and `.next` stay in Docker volumes. This keeps the integrated HTTPS/Nginx stack while allowing frontend edits to hot reload without rebuilding the runtime image.
+Use `make dev-up` for the normal local development stack. With `DEPLOY_ENV=dev`, plain `make up`, `make ps`, `make logs`, `make migrate`, and `make down` also use `docker-compose.yml` plus `docker-compose.dev.yml`.
+
+The dev override bind-mounts both sibling application repositories:
+- `../app-starter-front` is served by the Next.js dev server, with `node_modules` and `.next` kept in Docker volumes.
+- `../app-starter-back` is mounted into the PHP runtime, so PHP and Twig edits are visible without rebuilding the backend image.
+
+Workers are intentionally short-lived in dev and restart every 60 seconds, which lets long-running Symfony consumers pick up backend code changes. The outbox scheduler runs every 5 seconds so transactional emails and realtime dispatches are quick to test.
+
+Compose variables live in the root `.env`; application variables injected into containers live in `env/.env.dev`. `make dev-up` renews anonymous dependency volumes so rebuilt images can refresh `vendor`, `node_modules`, and `.next` without polluting the host repositories.
 
 ```bash
 make dev-up
 make front-logs
 ```
 
-Use this after frontend dependency changes, Dockerfile changes, or when you only want to refresh the frontend and proxy without restarting the whole stack. The command rebuilds the dev image, recreates Nginx so template changes are applied, and renews anonymous frontend volumes:
+Use `make dev-build` after dependency changes, Dockerfile changes, or runtime image changes. Regular source edits do not need a rebuild.
+
+```bash
+make dev-build
+make dev-up
+```
+
+Use `make front-dev` only when you want to recreate the frontend dev service and Nginx without touching the rest of the stack:
 
 ```bash
 make front-dev
 make front-logs
 ```
 
-For a direct frontend-only dev server outside the integrated infra, use `starter_front`’s profiled `frontend-dev` compose service:
+For a direct frontend-only dev server outside the integrated infra, use `starter_front`’s profiled `frontend-dev` compose service.
 
 ```bash
 docker compose --profile dev up frontend-dev

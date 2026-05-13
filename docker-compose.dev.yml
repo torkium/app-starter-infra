@@ -1,3 +1,11 @@
+x-back-dev-volumes: &back-dev-volumes
+  - ${BACK_BUILD_CONTEXT:-../app-starter-back}:/app
+  - /app/vendor
+  - /app/var/cache
+  - /app/var/log
+  - media_uploads:/app/var/media/uploads
+  - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+
 services:
   back:
     build:
@@ -6,8 +14,7 @@ services:
       args:
         INSTALL_DEV_DEPS: "1"
     volumes:
-      - media_uploads:/app/var/media/uploads
-      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+      *back-dev-volumes
 
   worker_default:
     build:
@@ -15,9 +22,9 @@ services:
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
       args:
         INSTALL_DEV_DEPS: "1"
+    command: php bin/console messenger:consume async --time-limit=60 --memory-limit=256M
     volumes:
-      - media_uploads:/app/var/media/uploads
-      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+      *back-dev-volumes
 
   worker_mail:
     build:
@@ -25,9 +32,9 @@ services:
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
       args:
         INSTALL_DEV_DEPS: "1"
+    command: php bin/console messenger:consume async_mail --time-limit=60 --memory-limit=256M
     volumes:
-      - media_uploads:/app/var/media/uploads
-      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+      *back-dev-volumes
 
   worker_outbox:
     build:
@@ -35,9 +42,9 @@ services:
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
       args:
         INSTALL_DEV_DEPS: "1"
+    command: php bin/console messenger:consume async_outbox --time-limit=60 --memory-limit=256M
     volumes:
-      - media_uploads:/app/var/media/uploads
-      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+      *back-dev-volumes
 
   scheduler:
     build:
@@ -45,7 +52,13 @@ services:
       dockerfile: ${BACK_DOCKERFILE:-Dockerfile}
       args:
         INSTALL_DEV_DEPS: "1"
+    environment:
+      SCHEDULER_SLEEP_SECONDS: "5"
     volumes:
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}:/app
+      - /app/vendor
+      - /app/var/cache
+      - /app/var/log
       - ./scripts/scheduler-loop.sh:/usr/local/bin/scheduler-loop.sh:ro
       - media_uploads:/app/var/media/uploads
       - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro

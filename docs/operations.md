@@ -32,8 +32,12 @@ make observability-up
 
 ## Notes
 
-- `make dev-up` utilise `docker-compose.yml` + `docker-compose.dev.yml` pour lancer la stack locale avec Next.js en hot reload derriere Nginx.
-- `make up` utilise seulement `docker-compose.yml` et garde le front en mode image-only, utile pour tester un runtime plus proche de la prod.
+- `make dev-up` utilise `docker-compose.yml` + `docker-compose.dev.yml` pour lancer la stack locale avec Next.js en hot reload derriere Nginx et backend Symfony monte en volume.
+- Avec `DEPLOY_ENV=dev`, `make up`, `make ps`, `make logs`, `make migrate` et `make down` utilisent aussi l'override dev pour eviter une stack locale image-only accidentelle.
+- `DEPLOY_ENV=prod make up` utilise seulement `docker-compose.yml` et garde front/back en mode image-only, adapte au runtime deploye.
+- `make dev-build` reconstruit les images dev quand les Dockerfiles ou dependances changent. Les changements PHP, Twig et TypeScript ordinaires ne demandent pas de rebuild.
+- Le `.env` a la racine pilote Make/Compose. `env/.env.dev` contient les variables injectees dans les containers. `make dev-up` renouvelle les volumes anonymes de dependances apres rebuild.
+- Les workers Symfony dev ont un `--time-limit=60` pour recharger regulierement le code backend. Le scheduler outbox tourne toutes les 5 secondes.
 - `make front-dev` sert a recreer uniquement le front dev et Nginx sans relancer toute la stack.
 - `make dev-up` et `make up` lancent d'abord le coeur du stack, appliquent les migrations, puis demarrent workers et scheduler.
 - `make dev-up` lance aussi un nettoyage Docker dev des ressources inutilisees de plus de 24h. Desactivez-le ponctuellement avec `AUTO_DOCKER_CLEANUP=0 make dev-up`.

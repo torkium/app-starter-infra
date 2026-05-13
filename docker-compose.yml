@@ -132,6 +132,7 @@ services:
       - ./env/.env.${DEPLOY_ENV:-dev}
     environment:
       SCHEDULER_TICK_COMMAND: ${SCHEDULER_TICK_COMMAND:-php bin/console app:schedule:run}
+      SCHEDULER_SLEEP_SECONDS: ${SCHEDULER_SLEEP_SECONDS:-60}
     depends_on:
       db:
         condition: service_healthy
