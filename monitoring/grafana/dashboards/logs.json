@@ -45,7 +45,7 @@
   "schemaVersion": 39,
   "style": "dark",
   "tags": [
-    "starter",
+    "my_app",
     "logs"
   ],
   "templating": {
@@ -56,8 +56,8 @@
     "to": "now"
   },
   "timezone": "",
-  "title": "App Logs",
-  "uid": "starter-logs",
+  "title": "My App Logs",
+  "uid": "my_app-logs",
   "version": 1,
   "weekStart": ""
 }

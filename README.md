@@ -1,16 +1,16 @@
-# starter_infra
+# app-starter-infra
 
-Production-minded infrastructure starter for orchestrating a `starter_back` Symfony application and a `starter_front` Next.js application with Docker Compose, CI/CD, observability, and operational tooling.
+Production-minded infrastructure starter for orchestrating a `app-starter-back` Symfony application and a `app-starter-front` Next.js application with Docker Compose, CI/CD, observability, and operational tooling.
 
 This repo is the infrastructure and deployment layer of the starter trio:
-- `starter_back`: the backend application starter
-- `starter_front`: the frontend application starter
+- `app-starter-back`: the backend application starter
+- `app-starter-front`: the frontend application starter
 
 It is optional if you want to reuse only the backend or only the frontend with your own infrastructure.
 
 ## Purpose
 
-Use `starter_infra` when you want the operational layer already in place:
+Use `app-starter-infra` when you want the operational layer already in place:
 
 - local full-stack orchestration
 - reverse proxy and TLS for local environments
@@ -45,16 +45,16 @@ The repo is intentionally generic and contains no project-specific hostnames, se
 
 ## Related Starters
 
-- `starter_back`
+- `app-starter-back`
   The expected backend image. It must expose an HTTP app and support Symfony CLI commands for migrations, workers, and scheduler.
 
-- `starter_front`
+- `app-starter-front`
   The expected frontend image. It must expose a Next.js runtime and support the runtime environment contract documented by this repo.
 
 Typical combinations:
-- `starter_back` alone: no need for this repo if you already have your own infra
-- `starter_front` alone: no need for this repo if you already have your own infra
-- full trio: `starter_back` + `starter_front` + `starter_infra`
+- `app-starter-back` alone: no need for this repo if you already have your own infra
+- `app-starter-front` alone: no need for this repo if you already have your own infra
+- full trio: `app-starter-back` + `app-starter-front` + `app-starter-infra`
 
 ## Quick Start
 
@@ -138,7 +138,7 @@ make front-dev
 make front-logs
 ```
 
-For a direct frontend-only dev server outside the integrated infra, use `starter_front`’s profiled `frontend-dev` compose service.
+For a direct frontend-only dev server outside the integrated infra, use `app-starter-front`’s profiled `frontend-dev` compose service.
 
 ```bash
 docker compose --profile dev up frontend-dev
@@ -226,11 +226,11 @@ make rollback TARGET=back VERSION=staging
 
 If you use the full trio:
 
-1. Initialize `starter_back`
-2. Initialize `starter_front`
-3. Initialize `starter_infra`
-4. Start the integrated stack from `starter_infra`
+1. Initialize `app-starter-back`
+2. Initialize `app-starter-front`
+3. Initialize `app-starter-infra`
+4. Start the integrated stack from `app-starter-infra`
 5. Let `make up` run the first migrations, or use `make migrate` after manual restarts
 6. Validate the stack with `make stack-assert`
 
-`starter_infra` is the repo that ties the other two together for local full-stack work and deployment automation.
+`app-starter-infra` is the repo that ties the other two together for local full-stack work and deployment automation.

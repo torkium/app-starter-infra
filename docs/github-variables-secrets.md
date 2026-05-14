@@ -93,7 +93,8 @@ Ce starter utilise les GitHub Environments pour isoler la configuration de
 - `GRAFANA_ADMIN_PASSWORD`
 - `GRAFANA_SECRET_KEY`
 - `GRAFANA_HTPASSWD`
-- `CI_READ_REPOSITORIES_TOKEN` si le repo infra doit checkout des repos applicatifs prives pendant sa gate CI d'integration
+- `CI_READ_BACK_DEPLOY_KEY` si le repo infra doit checkout le repo backend prive pendant sa gate CI d'integration
+- `CI_READ_FRONT_DEPLOY_KEY` si le repo infra doit checkout le repo frontend prive pendant sa gate CI d'integration
 
 ## Bootstrap
 

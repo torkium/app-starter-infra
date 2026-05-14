@@ -129,11 +129,15 @@ FILES=(
   "README.md"
   ".env.example"
   "env/.env.dev.example"
+  "env/.env.example"
   ".github/workflows/ci.yml"
+  ".github/workflows/deploy.yml"
+  ".github/workflows/rollback.yml"
   "docker-compose.yml"
   "docker-compose.dev.yml"
   "bootstrap/github/environment.env.example"
   "scripts/init.sh"
+  "scripts/bootstrap-project.sh"
   "scripts/render-compose-env.sh"
   "scripts/render-runtime-env.sh"
   "scripts/release-state-dir.sh"
@@ -152,28 +156,53 @@ FILES=(
   "edge-media-worker/wrangler.toml.example"
 )
 
+OPTIONAL_FILES=(
+  ".env"
+  "env/.env.dev"
+  "bootstrap/github/dev.env"
+)
+
 for file in "${FILES[@]}"; do
   assert_file "$file"
 done
 
+for file in "${OPTIONAL_FILES[@]}"; do
+  if [ -f "${ROOT_DIR}/${file}" ]; then
+    FILES+=("$file")
+  fi
+done
+
 for file in "${FILES[@]}"; do
   target="${ROOT_DIR}/${file}"
-  replace_literal "$target" "../app-starter-back" "../${BACK_REPO}"
-  replace_literal "$target" "../app-starter-front" "../${FRONT_REPO}"
+  replace_literal "$target" "../starter_back" "../${BACK_REPO}"
+  replace_literal "$target" "../starter_front" "../${FRONT_REPO}"
   replace_literal "$target" "/run/starter-secrets/jwt" "/run/${PROJECT_NAME}-secrets/jwt"
   replace_literal "$target" "ghcr.io/example/starter-back" "${REGISTRY}/${BACK_REPO}"
   replace_literal "$target" "ghcr.io/example/starter-front" "${REGISTRY}/${FRONT_REPO}"
-  replace_literal "$target" "app-starter-back" "$BACK_REPO"
-  replace_literal "$target" "app-starter-front" "$FRONT_REPO"
+  replace_literal "$target" "ghcr.io/example/app-starter-back" "${REGISTRY}/${BACK_REPO}"
+  replace_literal "$target" "ghcr.io/example/app-starter-front" "${REGISTRY}/${FRONT_REPO}"
+  replace_literal "$target" "ghcr.io/torkium/app-starter-back" "${REGISTRY}/${BACK_REPO}"
+  replace_literal "$target" "ghcr.io/torkium/app-starter-front" "${REGISTRY}/${FRONT_REPO}"
   replace_literal "$target" "owner/starter_back" "${GITHUB_OWNER}/${BACK_REPO}"
   replace_literal "$target" "owner/starter_front" "${GITHUB_OWNER}/${FRONT_REPO}"
   replace_literal "$target" "owner/starter_infra" "${GITHUB_OWNER}/${INFRA_REPO}"
+  replace_literal "$target" "owner/app-starter-back" "${GITHUB_OWNER}/${BACK_REPO}"
+  replace_literal "$target" "owner/app-starter-front" "${GITHUB_OWNER}/${FRONT_REPO}"
+  replace_literal "$target" "owner/app-starter-infra" "${GITHUB_OWNER}/${INFRA_REPO}"
+  replace_literal "$target" "app-starter-infra" "$INFRA_REPO"
+  replace_literal "$target" "app-starter-back" "$BACK_REPO"
+  replace_literal "$target" "app-starter-front" "$FRONT_REPO"
   replace_literal "$target" "starter-back" "$BACK_REPO"
   replace_literal "$target" "starter-front" "$FRONT_REPO"
   replace_literal "$target" "starter-infra" "$INFRA_REPO"
   replace_literal "$target" "starter_back" "$BACK_REPO"
   replace_literal "$target" "starter_front" "$FRONT_REPO"
   replace_literal "$target" "starter_infra" "$INFRA_REPO"
+  replace_literal "$target" "my-app-private-media" "${PROJECT_NAME}-private-media"
+  replace_literal "$target" "my-app-media-edge" "${PROJECT_NAME}-media-edge"
+  replace_literal "$target" "my_app" "$PROJECT_DB_IDENTIFIER"
+  replace_literal "$target" "My App Observability" "${PROJECT_PASCAL}Observability"
+  replace_literal "$target" "My App" "$PROJECT_TITLE"
   replace_literal "$target" "Starter infra" "${PROJECT_TITLE} infra"
   replace_literal "$target" "starter-private-media" "${PROJECT_NAME}-private-media"
   replace_literal "$target" "starter-backups" "${PROJECT_NAME}-backups"
@@ -187,23 +216,85 @@ for file in "${FILES[@]}"; do
   replace_literal "$target" "/srv/starter/releases" "/srv/${PROJECT_NAME}/releases"
 done
 
-replace_literal "${ROOT_DIR}/.env.example" "COMPOSE_PROJECT_NAME=starter" "COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
-replace_literal "${ROOT_DIR}/.env.example" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
-replace_literal "${ROOT_DIR}/.env.example" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
-replace_literal "${ROOT_DIR}/.env.example" "APP_DOMAIN=app.local" "APP_DOMAIN=${APP_DOMAIN}"
-replace_literal "${ROOT_DIR}/.env.example" "https://app.local" "https://${APP_DOMAIN}"
-replace_literal "${ROOT_DIR}/.env.example" "APP_DOMAIN=app.localhost" "APP_DOMAIN=${APP_DOMAIN}"
-replace_literal "${ROOT_DIR}/.env.example" "https://app.localhost" "https://${APP_DOMAIN}"
+for env_file in "${ROOT_DIR}/.env.example"; do
+  replace_literal "$env_file" "COMPOSE_PROJECT_NAME=starter" "COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$env_file" "COMPOSE_PROJECT_NAME=my_app" "COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$env_file" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "MYSQL_DATABASE=my_app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "MYSQL_USER=my_app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "APP_DOMAIN=app.local" "APP_DOMAIN=${APP_DOMAIN}"
+  replace_literal "$env_file" "APP_DOMAIN=app.localhost" "APP_DOMAIN=${APP_DOMAIN}"
+  replace_literal "$env_file" "https://app.local" "https://${APP_DOMAIN}"
+  replace_literal "$env_file" "https://app.localhost" "https://${APP_DOMAIN}"
+done
 
-replace_literal "${ROOT_DIR}/env/.env.dev.example" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
-replace_literal "${ROOT_DIR}/env/.env.dev.example" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
-replace_literal "${ROOT_DIR}/env/.env.dev.example" "DATABASE_URL=mysql://app:dev-password@db:3306/app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:dev-password@db:3306/${PROJECT_DB_IDENTIFIER}"
-replace_literal "${ROOT_DIR}/env/.env.dev.example" "https://app.local" "https://${APP_DOMAIN}"
-replace_literal "${ROOT_DIR}/env/.env.dev.example" "https://app.localhost" "https://${APP_DOMAIN}"
+if [ -f "${ROOT_DIR}/.env" ]; then
+  env_file="${ROOT_DIR}/.env"
+  replace_literal "$env_file" "COMPOSE_PROJECT_NAME=starter" "COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$env_file" "COMPOSE_PROJECT_NAME=my_app" "COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$env_file" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "MYSQL_DATABASE=my_app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "MYSQL_USER=my_app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$env_file" "APP_DOMAIN=app.local" "APP_DOMAIN=${APP_DOMAIN}"
+  replace_literal "$env_file" "APP_DOMAIN=app.localhost" "APP_DOMAIN=${APP_DOMAIN}"
+  replace_literal "$env_file" "https://app.local" "https://${APP_DOMAIN}"
+  replace_literal "$env_file" "https://app.localhost" "https://${APP_DOMAIN}"
+fi
 
-replace_literal "${ROOT_DIR}/bootstrap/github/environment.env.example" "ENV_VAR__COMPOSE_PROJECT_NAME=starter" "ENV_VAR__COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
-replace_literal "${ROOT_DIR}/bootstrap/github/environment.env.example" "ENV_VAR__MYSQL_DATABASE=app" "ENV_VAR__MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
-replace_literal "${ROOT_DIR}/bootstrap/github/environment.env.example" "ENV_VAR__MYSQL_USER=app" "ENV_VAR__MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+for runtime_env_file in "${ROOT_DIR}/env/.env.dev.example"; do
+  replace_literal "$runtime_env_file" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_DATABASE=my_app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_USER=my_app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "DATABASE_URL=mysql://app:dev-password@db:3306/app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:dev-password@db:3306/${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "DATABASE_URL=mysql://my_app:dev-password@db:3306/my_app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:dev-password@db:3306/${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "https://app.local" "https://${APP_DOMAIN}"
+  replace_literal "$runtime_env_file" "https://app.localhost" "https://${APP_DOMAIN}"
+done
+
+for runtime_env_file in "${ROOT_DIR}/env/.env.example"; do
+  replace_literal "$runtime_env_file" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_DATABASE=my_app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_USER=my_app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "DATABASE_URL=mysql://app:change-me@db:3306/app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:change-me@db:3306/${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "DATABASE_URL=mysql://my_app:change-me@db:3306/my_app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:change-me@db:3306/${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "https://app.local" "https://${APP_DOMAIN}"
+  replace_literal "$runtime_env_file" "https://app.localhost" "https://${APP_DOMAIN}"
+done
+
+if [ -f "${ROOT_DIR}/env/.env.dev" ]; then
+  runtime_env_file="${ROOT_DIR}/env/.env.dev"
+  replace_literal "$runtime_env_file" "MYSQL_DATABASE=app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_DATABASE=my_app" "MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_USER=app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "MYSQL_USER=my_app" "MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "DATABASE_URL=mysql://app:dev-password@db:3306/app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:dev-password@db:3306/${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "DATABASE_URL=mysql://my_app:dev-password@db:3306/my_app" "DATABASE_URL=mysql://${PROJECT_DB_IDENTIFIER}:dev-password@db:3306/${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$runtime_env_file" "https://app.local" "https://${APP_DOMAIN}"
+  replace_literal "$runtime_env_file" "https://app.localhost" "https://${APP_DOMAIN}"
+fi
+
+for github_env_file in "${ROOT_DIR}/bootstrap/github/environment.env.example"; do
+  replace_literal "$github_env_file" "ENV_VAR__COMPOSE_PROJECT_NAME=starter" "ENV_VAR__COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$github_env_file" "ENV_VAR__COMPOSE_PROJECT_NAME=my_app" "ENV_VAR__COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_DATABASE=app" "ENV_VAR__MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_DATABASE=my_app" "ENV_VAR__MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_USER=app" "ENV_VAR__MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_USER=my_app" "ENV_VAR__MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+done
+
+if [ -f "${ROOT_DIR}/bootstrap/github/dev.env" ]; then
+  github_env_file="${ROOT_DIR}/bootstrap/github/dev.env"
+  replace_literal "$github_env_file" "ENV_VAR__COMPOSE_PROJECT_NAME=starter" "ENV_VAR__COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$github_env_file" "ENV_VAR__COMPOSE_PROJECT_NAME=my_app" "ENV_VAR__COMPOSE_PROJECT_NAME=${PROJECT_NAME}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_DATABASE=app" "ENV_VAR__MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_DATABASE=my_app" "ENV_VAR__MYSQL_DATABASE=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_USER=app" "ENV_VAR__MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+  replace_literal "$github_env_file" "ENV_VAR__MYSQL_USER=my_app" "ENV_VAR__MYSQL_USER=${PROJECT_DB_IDENTIFIER}"
+fi
 replace_literal "${ROOT_DIR}/monitoring/grafana/provisioning/dashboards/dashboards.yml" "folder: Starter" "folder: ${PROJECT_TITLE}"
 replace_literal "${ROOT_DIR}/monitoring/grafana/provisioning/dashboards/dashboards.yml" "folder: App" "folder: ${PROJECT_TITLE}"
 replace_literal "${ROOT_DIR}/monitoring/grafana/dashboards/overview.json" '"starter"' "\"${PROJECT_NAME}\""
@@ -214,7 +305,7 @@ replace_literal "${ROOT_DIR}/monitoring/grafana/dashboards/logs.json" '"title": 
 replace_literal "${ROOT_DIR}/monitoring/grafana/dashboards/logs.json" '"title": "Starter Logs"' "\"title\": \"${PROJECT_TITLE} Logs\""
 
 cat <<EOF
-Project templating applied in starter_infra.
+Project templating applied in ${INFRA_REPO}.
 
 Applied values:
 - project: ${PROJECT_NAME}

@@ -13,8 +13,8 @@ Options:
   --back-repo <name>          Backend repository name, default: <project>-back
   --front-repo <name>         Frontend repository name, default: <project>-front
   --infra-repo <name>         Infra repository name, default: <project>-infra
-  --back-dir <path>           Backend repo directory, default: sibling app-starter-back or ../<back-repo>
-  --front-dir <path>          Frontend repo directory, default: sibling app-starter-front or ../<front-repo>
+  --back-dir <path>           Backend repo directory, default: sibling starter_back or ../<back-repo>
+  --front-dir <path>          Frontend repo directory, default: sibling starter_front or ../<front-repo>
   --infra-dir <path>          Infra repo directory, default: current repo
   --registry <value>          Container registry prefix, default: ghcr.io/<owner>
   --configure-git-remotes     Replace origin in each repo with the target GitHub repository
@@ -182,11 +182,11 @@ INFRA_DIR="$(cd "${INFRA_DIR}" && pwd)"
 WORKSPACE_DIR="$(cd "${INFRA_DIR}/.." && pwd)"
 
 if [ -z "$BACK_DIR" ]; then
-  BACK_DIR="$(resolve_default_repo_dir "$WORKSPACE_DIR" "app-starter-back" "$BACK_REPO")"
+  BACK_DIR="$(resolve_default_repo_dir "$WORKSPACE_DIR" "starter_back" "$BACK_REPO")"
 fi
 
 if [ -z "$FRONT_DIR" ]; then
-  FRONT_DIR="$(resolve_default_repo_dir "$WORKSPACE_DIR" "app-starter-front" "$FRONT_REPO")"
+  FRONT_DIR="$(resolve_default_repo_dir "$WORKSPACE_DIR" "starter_front" "$FRONT_REPO")"
 fi
 
 if [ "$SKIP_CHECKS" -ne 1 ]; then

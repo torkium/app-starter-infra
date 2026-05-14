@@ -91,6 +91,34 @@ require_prod_secret() {
   require_not_weak_secret "$key"
 }
 
+require_pem_secret() {
+  local key="$1"
+  local value="${!key:-}"
+  local pem_value
+  local normalized
+
+  normalized="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+  case "$normalized" in
+    *replace-with*|*change-me*|*changeme*)
+      echo "Variable ${key} still uses a placeholder value" >&2
+      exit 1
+      ;;
+  esac
+
+  shift
+  pem_value="${value//\\n/$'\n'}"
+
+  local label
+  for label in "$@"; do
+    case "$pem_value" in
+      *"-----BEGIN ${label}-----"*"-----END ${label}-----"*) return 0 ;;
+    esac
+  done
+
+  echo "Variable ${key} must contain one of these PEM blocks: $*" >&2
+  exit 1
+}
+
 require_no_test_key_in_prod() {
   local key="$1"
   local value="${!key:-}"
@@ -123,6 +151,9 @@ case "$MODE" in
       require_url NEXT_PUBLIC_MEDIA_BASE_URL
     fi
     if [ "${DEPLOY_ENV:-dev}" != "dev" ] || [ "${APP_ENV:-dev}" != "dev" ]; then
+      require_keys JWT_PRIVATE_KEY_PEM JWT_PUBLIC_KEY_PEM
+      require_pem_secret JWT_PRIVATE_KEY_PEM "PRIVATE KEY" "ENCRYPTED PRIVATE KEY" "RSA PRIVATE KEY" "EC PRIVATE KEY"
+      require_pem_secret JWT_PUBLIC_KEY_PEM "PUBLIC KEY"
       require_prod_secret APP_SECRET 32
       require_prod_secret MYSQL_PASSWORD 24
       require_prod_secret MYSQL_ROOT_PASSWORD 24

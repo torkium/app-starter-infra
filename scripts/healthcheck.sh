@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BACK_HEALTH_URL="${BACK_HEALTH_URL:-https://localhost${BACK_HEALTH_PATH:-/api/health}}"
+BACK_HEALTH_URL="${BACK_HEALTH_URL:-https://localhost${BACK_HEALTH_PATH:-/api/ready}}"
 FRONT_HEALTH_URL="${FRONT_HEALTH_URL:-https://localhost/}"
 ATTEMPTS="${HEALTHCHECK_ATTEMPTS:-12}"
 SLEEP_SECONDS="${HEALTHCHECK_SLEEP_SECONDS:-5}"

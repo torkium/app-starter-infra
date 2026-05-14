@@ -46,7 +46,7 @@ make observability-up
 - `make docker-clean-hard` ajoute un prune des volumes inutilises. A reserver au dev local, jamais a lancer machinalement en prod.
 - Les workflows deploy/rollback lancent `scripts/docker-cleanup.sh deploy` en fin de job avec `DOCKER_CLEANUP_UNTIL=168h` par defaut; ce mode ne supprime pas les images taguees de rollback.
 - Pour forcer un autre jeu de fichiers Compose, definir `COMPOSE_FILES`.
-- Les variables supplementaires propres a `starter_back` ou `starter_front` doivent etre ajoutees dans `env/.env.<env>`.
+- Les variables supplementaires propres a `app-starter-back` ou `app-starter-front` doivent etre ajoutees dans `env/.env.<env>`.
 - Le profil `observability` est optionnel. Sans `make observability-up`, `/grafana/` ne servira rien.
 - `make init` prepare les fichiers de base et les certificats locaux.
 - `make stack-assert` rejoue les checks runtime utilises par la gate CI d'integration.

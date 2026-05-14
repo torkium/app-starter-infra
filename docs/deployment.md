@@ -57,7 +57,7 @@ Secrets:
 1. Publier les images backend et frontend.
 2. Renseigner l'environnement GitHub cible ou le bootstrapper via `docs/github-variables-secrets.md`.
 3. Declencher `.github/workflows/deploy.yml`, soit manuellement, soit via `repository_dispatch`.
-4. Le workflow genere `.env`, `env/.env.<env>` et `env/grafana.htpasswd`, valide Compose, pull les images, demarre la base + web, capture un snapshot DB pre-migration, lance les migrations, puis demarre les consumers et le scheduler.
+4. Le workflow genere `.env`, `env/.env.<env>` et `env/grafana.htpasswd`, valide Compose, pull les images, stoppe l'application si des migrations sont prevues, demarre les dependances, capture un snapshot DB pre-migration coherent, lance les migrations, puis redemarre l'application, les consumers et le scheduler.
 5. Si la sante HTTP applicative est validee et que les services async sont bien demarres, l'etat de release est promu dans le repertoire persistant resolu par `RELEASE_STATE_ROOT`.
 
 ## Gate d'integration repo infra
@@ -80,7 +80,7 @@ La gate verifie :
 
 - la montee de pile complete
 - la migration Doctrine
-- `GET /api/health`
+- `GET /api/ready`
 - `GET /`
 - `GET /api/doc.json`
 - la disponibilite de Mercure
@@ -142,7 +142,7 @@ les deux champs de version :
   "client_payload": {
     "environment": "staging",
     "app": "back",
-    "image": "ghcr.io/example/starter-back",
+    "image": "ghcr.io/example/app-starter-back",
     "version": "sha-abc123",
     "repository": "owner/app-starter-back"
   }
@@ -164,7 +164,7 @@ curl -L \
   -X POST \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer ${INFRA_REPO_TOKEN}" \
-  https://api.github.com/repos/owner/starter_infra/dispatches \
+  https://api.github.com/repos/owner/app-starter-infra/dispatches \
   -d '{
     "event_type": "deploy",
     "client_payload": {

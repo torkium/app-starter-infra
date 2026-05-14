@@ -21,6 +21,10 @@ gzip -dc "$INPUT_FILE" | docker compose ${COMPOSE_FILES:- -f docker-compose.yml 
 echo "Restore completed from $INPUT_FILE"
 
 MEDIA_ARCHIVE="${INPUT_FILE%.sql.gz}-media.tar.gz"
+legacy_media_archive="$(dirname "$INPUT_FILE")/previous-media.tar.gz"
+if [ ! -f "$MEDIA_ARCHIVE" ] && [ "$(basename "$INPUT_FILE")" = "previous-db.sql.gz" ] && [ -f "$legacy_media_archive" ]; then
+  MEDIA_ARCHIVE="$legacy_media_archive"
+fi
 compose_project_name="${COMPOSE_PROJECT_NAME:-}"
 if [ -z "$compose_project_name" ] && [ -f "$ROOT_DIR/.env" ]; then
   compose_project_name="$(awk -F= '$1 == "COMPOSE_PROJECT_NAME" { print substr($0, index($0, "=") + 1) }' "$ROOT_DIR/.env" | tail -n 1)"

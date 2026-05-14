@@ -22,22 +22,22 @@ Le script :
 Par defaut, l'orchestrateur sait partir d'un trio clone avec les noms de dossiers
 locaux `app-starter-back`, `app-starter-front`, `app-starter-infra`.
 
-Ce guide sert de fil directeur pour repartir du trio `starter_back`,
-`starter_front`, `starter_infra` dans les dossiers `app-starter-*` et obtenir un projet utilisable sans chasse aux
+Ce guide sert de fil directeur pour repartir du trio `app-starter-back`,
+`app-starter-front`, `app-starter-infra` et obtenir un projet utilisable sans chasse aux
 variables.
 
 Convention de lecture du guide :
 
-- avant bootstrap ou renommage local, les chemins ci-dessous sont `app-starter-*`
+- avant bootstrap ou renommage local, les chemins ci-dessous sont `starter_*`
 - apres bootstrap et renommage local des dossiers, remplacez-les par vos noms de repos reels
 
 ## 1. Choisir le mode d'usage
 
 Tu peux utiliser les starters de deux manieres :
 
-- `starter_back` seul, avec ton propre front et ta propre infra
-- `starter_front` seul, avec ton propre backend compatible
-- les trois repos ensemble, avec `starter_infra` comme orchestrateur global
+- `app-starter-back` seul, avec ton propre front et ta propre infra
+- `app-starter-front` seul, avec ton propre backend compatible
+- les trois repos ensemble, avec `app-starter-infra` comme orchestrateur global
 
 Le reste de ce guide couvre le mode complet a trois repos.
 

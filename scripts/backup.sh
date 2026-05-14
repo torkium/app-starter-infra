@@ -5,8 +5,13 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUTPUT_FILE="${1:-$BACKUP_DIR/mysql-${TIMESTAMP}.sql.gz}"
+if [ "${OUTPUT_FILE#/}" = "$OUTPUT_FILE" ]; then
+  OUTPUT_FILE="$ROOT_DIR/$OUTPUT_FILE"
+fi
+OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
 
 mkdir -p "$BACKUP_DIR"
+mkdir -p "$OUTPUT_DIR"
 
 cd "$ROOT_DIR"
 docker compose ${COMPOSE_FILES:- -f docker-compose.yml -f docker-compose.dev.yml} \
@@ -25,7 +30,7 @@ if docker volume inspect "$media_volume" >/dev/null 2>&1; then
   media_archive="${OUTPUT_FILE%.sql.gz}-media.tar.gz"
   docker run --rm \
     -v "${media_volume}:/source:ro" \
-    -v "${BACKUP_DIR}:/backup" \
+    -v "${OUTPUT_DIR}:/backup" \
     alpine:3.22 \
     sh -lc "cd /source && tar -czf \"/backup/$(basename "$media_archive")\" ."
   echo "Media backup written to $media_archive"

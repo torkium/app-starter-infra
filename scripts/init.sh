@@ -30,7 +30,7 @@ copy_if_missing "${ROOT_DIR}/bootstrap/github/environment.env.example" "$BOOTSTR
 "${ROOT_DIR}/scripts/render-grafana-htpasswd.sh"
 
 cat <<EOF
-Starter infra initialized.
+My App infra initialized.
 
 Files prepared:
 - ${ENV_FILE}

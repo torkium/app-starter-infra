@@ -24,6 +24,12 @@ persist_rollback_state() {
   mkdir -p "$STATE_DIR"
   cp "$current_env_source" "$STATE_DIR/current.env"
   cp "$previous_env_source" "$STATE_DIR/previous.env"
+  if [ -f "$runtime_env_file" ]; then
+    cp "$runtime_env_file" "$STATE_DIR/current-runtime.env"
+  fi
+  if [ -f "$before_rollback_runtime_env" ]; then
+    cp "$before_rollback_runtime_env" "$STATE_DIR/previous-runtime.env"
+  fi
 
   if [ -n "$previous_db_source" ] && [ -f "$previous_db_source" ]; then
     cp "$previous_db_source" "$STATE_DIR/previous-db.sql.gz"
@@ -41,12 +47,34 @@ if [ ! -f "$STATE_DIR/current.env" ]; then
   exit 1
 fi
 
-before_rollback_env="$STATE_DIR/current.env"
+runtime_env_file="$ROOT_DIR/env/.env.${DEPLOY_ENV:-dev}"
+before_rollback_env="$STATE_DIR/rollback-current.env"
+before_rollback_runtime_env="$STATE_DIR/rollback-current-runtime.env"
 before_rollback_db="$STATE_DIR/rollback-current-db.sql.gz"
 before_rollback_media="${before_rollback_db%.sql.gz}-media.tar.gz"
+rollback_restore_started=0
+persisted_rollback_state=0
+
+cp "$STATE_DIR/current.env" "$before_rollback_env"
+if [ -f "$STATE_DIR/current-runtime.env" ]; then
+  cp "$STATE_DIR/current-runtime.env" "$before_rollback_runtime_env"
+fi
 
 stop_application_stack() {
   docker compose ${COMPOSE_ARGS} stop back front nginx worker_default worker_mail worker_outbox scheduler >/dev/null 2>&1 || true
+}
+
+recover_current_application() {
+  cp "$before_rollback_env" .env
+  if [ -f "$before_rollback_runtime_env" ]; then
+    cp "$before_rollback_runtime_env" "$runtime_env_file"
+  fi
+  if [ "$rollback_restore_started" = "1" ] && [ -f "$before_rollback_db" ]; then
+    docker compose ${COMPOSE_ARGS} up -d db redis mercure >/dev/null
+    COMPOSE_FILES="${COMPOSE_ARGS}" "$ROOT_DIR/scripts/restore.sh" "$before_rollback_db" >/dev/null
+  fi
+  docker compose ${COMPOSE_ARGS} up -d --remove-orphans back front nginx >/dev/null
+  docker compose ${COMPOSE_ARGS} up -d worker_default worker_mail worker_outbox scheduler >/dev/null
 }
 
 restore_previous_runtime_state() {
@@ -73,11 +101,18 @@ case "$TARGET" in
       echo "No previous deployment snapshot found in $STATE_DIR/previous.env" >&2
       exit 1
     fi
-
-    COMPOSE_FILES="${COMPOSE_ARGS}" "$ROOT_DIR/scripts/backup.sh" "$before_rollback_db"
-    cp "$STATE_DIR/previous.env" .env
+    if [ ! -f "$STATE_DIR/previous-runtime.env" ]; then
+      echo "No previous runtime env snapshot found in $STATE_DIR/previous-runtime.env" >&2
+      exit 1
+    fi
 
     stop_application_stack
+    trap 'recover_current_application' ERR
+    COMPOSE_FILES="${COMPOSE_ARGS}" "$ROOT_DIR/scripts/backup.sh" "$before_rollback_db"
+    cp "$STATE_DIR/previous.env" .env
+    cp "$STATE_DIR/previous-runtime.env" "$runtime_env_file"
+
+    rollback_restore_started=1
     restore_previous_runtime_state
 
     if [ "$TARGET" = "back" ]; then
@@ -89,14 +124,12 @@ case "$TARGET" in
     fi
     docker compose ${COMPOSE_ARGS} up -d worker_default worker_mail worker_outbox scheduler
 
-    persist_rollback_state \
-      "$before_rollback_env" \
-      "$ROOT_DIR/.env" \
-      "$before_rollback_db" \
-      "$before_rollback_media"
     ;;
   front)
     cp "$before_rollback_env" .env
+    if [ -f "$before_rollback_runtime_env" ]; then
+      cp "$before_rollback_runtime_env" "$runtime_env_file"
+    fi
 
     if [ -n "$VERSION" ]; then
       sed -i "s|^FRONT_IMAGE_TAG=.*|FRONT_IMAGE_TAG=$VERSION|" .env
@@ -118,7 +151,6 @@ case "$TARGET" in
     docker compose ${COMPOSE_ARGS} pull front
     docker compose ${COMPOSE_ARGS} up -d front
 
-    persist_rollback_state "$before_rollback_env" "$ROOT_DIR/.env"
     ;;
   *)
     echo "Unknown target: $TARGET" >&2
@@ -130,6 +162,22 @@ if [ "$TARGET" = "back" ] || [ "$TARGET" = "both" ]; then
   "$ROOT_DIR/scripts/check-background-services.sh"
 fi
 
-BACK_HEALTH_PATH="${BACK_HEALTH_PATH:-/api/health}" "$ROOT_DIR/scripts/healthcheck.sh"
+BACK_HEALTH_PATH="${BACK_HEALTH_PATH:-/api/ready}" "$ROOT_DIR/scripts/healthcheck.sh"
+
+case "$TARGET" in
+  back|both)
+    persist_rollback_state \
+      "$before_rollback_env" \
+      "$ROOT_DIR/.env" \
+      "$before_rollback_db" \
+      "$before_rollback_media"
+    persisted_rollback_state=1
+    trap - ERR
+    ;;
+  front)
+    persist_rollback_state "$before_rollback_env" "$ROOT_DIR/.env"
+    persisted_rollback_state=1
+    ;;
+esac
 
 echo "Rollback completed"

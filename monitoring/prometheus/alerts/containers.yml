@@ -1,5 +1,5 @@
 groups:
-  - name: starter-observability
+  - name: my_app-observability
     rules:
       - alert: ObservabilityComponentDown
         expr: up{job=~"prometheus|alloy|cadvisor"} == 0

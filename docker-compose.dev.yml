@@ -4,7 +4,7 @@ x-back-dev-volumes: &back-dev-volumes
   - /app/var/cache
   - /app/var/log
   - media_uploads:/app/var/media/uploads
-  - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+  - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/my_app-secrets/jwt:ro
 
 services:
   back:
@@ -59,9 +59,9 @@ services:
       - /app/vendor
       - /app/var/cache
       - /app/var/log
-      - ./scripts/scheduler-loop.sh:/usr/local/bin/scheduler-loop.sh:ro
       - media_uploads:/app/var/media/uploads
-      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/starter-secrets/jwt:ro
+      - ./scripts/scheduler-loop.sh:/usr/local/bin/scheduler-loop.sh:ro
+      - ${BACK_BUILD_CONTEXT:-../app-starter-back}/config/jwt:/run/my_app-secrets/jwt:ro
 
   front:
     build:

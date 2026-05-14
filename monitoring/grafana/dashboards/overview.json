@@ -156,7 +156,7 @@
   "schemaVersion": 39,
   "style": "dark",
   "tags": [
-    "starter",
+    "my_app",
     "observability"
   ],
   "templating": {
@@ -167,8 +167,8 @@
     "to": "now"
   },
   "timezone": "",
-  "title": "App Overview",
-  "uid": "starter-overview",
+  "title": "My App Overview",
+  "uid": "my_app-overview",
   "version": 1,
   "weekStart": ""
 }

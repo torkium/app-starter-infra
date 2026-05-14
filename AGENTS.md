@@ -1,6 +1,6 @@
-# AGENTS.md - starter_infra
+# AGENTS.md - app-starter-infra
 
-Starter infra generique pour une application Symfony + Next.js dockerisee.
+My App infra generique pour une application Symfony + Next.js dockerisee.
 
 ## Perimetre
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILES="${COMPOSE_FILES:- -f docker-compose.yml -f docker-compose.dev.yml}"
-BACK_HEALTH_URL="${BACK_HEALTH_URL:-https://localhost${BACK_HEALTH_PATH:-/api/health}}"
+BACK_HEALTH_URL="${BACK_HEALTH_URL:-https://localhost${BACK_HEALTH_PATH:-/api/ready}}"
 FRONT_HEALTH_URL="${FRONT_HEALTH_URL:-https://localhost/}"
 API_DOC_URL="${API_DOC_URL:-https://localhost/api/doc.json}"
 MERCURE_HEALTH_URL="${MERCURE_HEALTH_URL:-https://localhost/.well-known/mercure}"

@@ -1,13 +1,13 @@
 # Server installation
 
-Ce guide couvre l'installation generique d'un serveur cible pour `starter_infra`.
+Ce guide couvre l'installation generique d'un serveur cible pour `app-starter-infra`.
 
 ## Prerequis
 
 - Ubuntu ou Debian recente
 - acces sudo
 - DNS ou certificat deja prepare
-- acces au registre d'images utilise par `starter_back` et `starter_front`
+- acces au registre d'images utilise par `app-starter-back` et `app-starter-front`
 
 ## Installer Docker et Compose
 
@@ -28,8 +28,8 @@ sudo usermod -aG docker "$USER"
 ## Recuperer le repo
 
 ```bash
-git clone git@github.com:owner/starter_infra.git
-cd starter_infra
+git clone git@github.com:owner/app-starter-infra.git
+cd app-starter-infra
 ```
 
 ## Initialiser la configuration

@@ -54,7 +54,7 @@ make backup
 Backup offsite :
 
 ```bash
-RESTIC_REPOSITORY=b2:starter-backups:mysql \
+RESTIC_REPOSITORY=b2:app-starter-backups:mysql \
 RESTIC_PASSWORD='replace-me' \
 make backup-offsite
 ```

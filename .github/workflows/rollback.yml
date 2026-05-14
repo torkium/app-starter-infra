@@ -61,7 +61,7 @@ jobs:
 
       - name: Write compose env
         env:
-          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME || 'starter' }}
+          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME || 'my_app' }}
           DEPLOY_ENV: ${{ inputs.environment }}
           BACK_IMAGE: ${{ vars.BACK_IMAGE }}
           BACK_IMAGE_TAG: ${{ vars.BACK_IMAGE_TAG_DEFAULT || 'latest' }}
@@ -76,15 +76,15 @@ jobs:
           LOKI_VERSION: ${{ vars.LOKI_VERSION || '3.7.1' }}
           ALLOY_VERSION: ${{ vars.ALLOY_VERSION || 'v1.16.1' }}
           CADVISOR_VERSION: ${{ vars.CADVISOR_VERSION || 'v0.55.1' }}
-          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'app' }}
-          MYSQL_USER: ${{ vars.MYSQL_USER || 'app' }}
+          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'my_app' }}
+          MYSQL_USER: ${{ vars.MYSQL_USER || 'my_app' }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
           HOST_HTTP_PORT: ${{ vars.HOST_HTTP_PORT || '80' }}
           HOST_HTTPS_PORT: ${{ vars.HOST_HTTPS_PORT || '443' }}
           TLS_CERT_PATH: ${{ vars.TLS_CERT_PATH || '/etc/nginx/certs/fullchain.pem' }}
           TLS_KEY_PATH: ${{ vars.TLS_KEY_PATH || '/etc/nginx/certs/privkey.pem' }}
           BACK_HTTP_PORT: ${{ vars.BACK_HTTP_PORT || '8080' }}
-          BACK_HEALTH_PATH: ${{ vars.BACK_HEALTH_PATH || '/api/health' }}
+          BACK_HEALTH_PATH: ${{ vars.BACK_HEALTH_PATH || '/api/ready' }}
           FRONT_HTTP_PORT: ${{ vars.FRONT_HTTP_PORT || '3000' }}
           WORKER_DEFAULT_COMMAND: ${{ vars.WORKER_DEFAULT_COMMAND || 'php bin/console messenger:consume async --time-limit=3600 --memory-limit=256M' }}
           WORKER_MAIL_COMMAND: ${{ vars.WORKER_MAIL_COMMAND || 'php bin/console messenger:consume async_mail --time-limit=3600 --memory-limit=256M' }}
@@ -104,12 +104,13 @@ jobs:
 
       - name: Write runtime env
         env:
+          DEPLOY_ENV: ${{ inputs.environment }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
-          APP_ENV: ${{ vars.APP_ENV || 'prod' }}
+          APP_ENV: ${{ vars.APP_ENV || (inputs.environment == 'dev' && 'dev' || 'prod') }}
           APP_DEBUG: ${{ vars.APP_DEBUG || '0' }}
           APP_SECRET: ${{ secrets.APP_SECRET }}
-          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'app' }}
-          MYSQL_USER: ${{ vars.MYSQL_USER || 'app' }}
+          MYSQL_DATABASE: ${{ vars.MYSQL_DATABASE || 'my_app' }}
+          MYSQL_USER: ${{ vars.MYSQL_USER || 'my_app' }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
           REDIS_URL: ${{ vars.REDIS_URL || 'redis://redis:6379' }}
@@ -126,6 +127,7 @@ jobs:
           API_BASE_URL: ${{ vars.API_BASE_URL || format('http://back:{0}/api', vars.BACK_HTTP_PORT || '8080') }}
           MEDIA_EDGE_BASE_URL: ${{ vars.MEDIA_EDGE_BASE_URL || '' }}
           APP_MEDIA_PUBLIC_BASE_URL: ${{ vars.APP_MEDIA_PUBLIC_BASE_URL || format('https://{0}/uploads/media', vars.APP_DOMAIN) }}
+          NEXT_PUBLIC_APP_NAME: ${{ vars.NEXT_PUBLIC_APP_NAME || 'My App' }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || format('https://{0}', vars.APP_DOMAIN) }}
           NEXT_PUBLIC_MERCURE_URL: ${{ vars.NEXT_PUBLIC_MERCURE_URL || format('https://{0}/.well-known/mercure', vars.APP_DOMAIN) }}
           NEXT_PUBLIC_MERCURE_DISABLED: ${{ vars.NEXT_PUBLIC_MERCURE_DISABLED || 'false' }}
@@ -166,6 +168,7 @@ jobs:
         env:
           DEPLOY_ENV: ${{ inputs.environment }}
           RELEASE_STATE_ROOT: ${{ vars.RELEASE_STATE_ROOT || '' }}
+          BACK_HEALTH_PATH: ${{ vars.BACK_HEALTH_PATH || '/api/ready' }}
         run: |
           ./scripts/rollback.sh "${{ inputs.target }}" "${{ inputs.version }}"
 
